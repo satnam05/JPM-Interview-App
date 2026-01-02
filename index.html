@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JPM Interview Prep App v8.2 (Clean UI)</title>
+    <title>JPM Interview Prep App v9.0 (Final Polish)</title>
     
     <!-- Dependencies -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -46,7 +46,6 @@
         const { useState, useEffect, useRef } = React;
 
         // --- CORE UTILS ---
-        
         const parseCSV = (text) => {
             if (!text) return [];
             if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); 
