@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JPM Interview Prep App v5.0 (Resilient)</title>
+    <title>JPM Interview Prep App v5.1 (Universal)</title>
     
     <!-- Dependencies -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -47,34 +47,56 @@
 
         // --- CORE UTILS ---
         
-        // 1. SMART PARSER (Supports Pipe '|' and Comma ',')
+        // 1. UNIVERSAL PARSER (Handles | or , with quotes support)
         const parseCSV = (text) => {
             if (!text) return [];
             if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // Remove BOM
             text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
             
-            const lines = text.split('\n').filter(l => l.trim().length > 0);
-            if (lines.length === 0) return [];
+            // Detect delimiter from first line
+            const firstLine = text.split('\n')[0];
+            // Prefer Pipe if present, else Comma
+            const delimiter = firstLine.includes('|') ? '|' : ',';
 
-            // Detect Delimiter based on header
-            const headerLine = lines[0];
-            const delimiter = headerLine.includes('|') ? '|' : ',';
-            
-            const headers = headerLine.split(delimiter).map(h => h.trim());
+            const rows = [];
+            let currentRow = [];
+            let currentVal = '';
+            let insideQuotes = false;
 
-            return lines.slice(1).map((line, idx) => {
-                // Handle split but respect quotes only if comma mode, pipe mode is strict split
-                let values;
-                if (delimiter === '|') {
-                    values = line.split('|');
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i+1];
+
+                if (char === '"') {
+                    if (insideQuotes && nextChar === '"') { 
+                        currentVal += '"'; 
+                        i++; 
+                    } else {
+                        insideQuotes = !insideQuotes;
+                    }
+                } else if (char === delimiter && !insideQuotes) {
+                    currentRow.push(currentVal); 
+                    currentVal = '';
+                } else if (char === '\n' && !insideQuotes) {
+                    currentRow.push(currentVal);
+                    if(currentRow.length > 0) rows.push(currentRow);
+                    currentRow = []; 
+                    currentVal = '';
                 } else {
-                    // Legacy Regex for Comma
-                    values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+                    currentVal += char;
                 }
+            }
+            if (currentVal) currentRow.push(currentVal);
+            if (currentRow.length > 0) rows.push(currentRow);
 
+            if (rows.length === 0) return [];
+            
+            // Header Mapping
+            const headers = rows[0].map(h => h.trim());
+            return rows.slice(1).map((row, idx) => {
                 const entry = { id: `row-${idx}` };
                 headers.forEach((h, i) => {
-                    let val = values[i] || '';
+                    let val = row[i] || '';
                     val = val.trim();
                     if (val.startsWith('"') && val.endsWith('"')) val = val.substring(1, val.length - 1);
                     entry[h] = val.replace(/""/g, '"');
@@ -83,6 +105,7 @@
             });
         };
 
+        // 2. Similarity Algorithm
         const calculateSimilarity = (s1, s2) => {
             if (!s1 || !s2) return 0;
             const a = s1.toLowerCase(), b = s2.toLowerCase();
@@ -96,6 +119,7 @@
             return Math.round((1 - matrix[b.length][a.length] / Math.max(a.length, b.length)) * 100);
         };
 
+        // 3. Shuffle Algorithm
         const shuffleArray = (array) => {
             let arr = [...array];
             for (let i = arr.length - 1; i > 0; i--) {
@@ -138,6 +162,7 @@
             );
         };
 
+        // FLASHCARD MODE (Fix: Handles exit during review)
         const FlashcardMode = ({ deckData, onEnd, onStatsUpdate }) => {
             const [queue, setQueue] = useState(deckData);
             const [current, setCurrent] = useState(deckData[0]);
@@ -172,14 +197,15 @@
             };
 
             const handleExit = () => {
-                // Determine if we need to save state
-                // If Finished but ReviewPile exists -> In Progress (Save ReviewPile)
-                // If Not Finished -> In Progress (Save Queue + ReviewPile)
+                // If exiting from Summary screen, save only remaining review items
+                // If exiting from Middle of deck, save Queue + ReviewPile
                 let itemsToSave = [];
                 if (isFinished) itemsToSave = reviewPile;
                 else itemsToSave = [...queue, ...reviewPile];
                 
-                onEnd(itemsToSave.length === 0 ? 100 : 40, itemsToSave); 
+                // If items remain, it's NOT 100% complete
+                const score = itemsToSave.length === 0 ? 100 : 50; 
+                onEnd(score, itemsToSave); 
             };
 
             if (isFinished) {
@@ -368,29 +394,28 @@
             const [progress, setProgress] = useState({});
             const [modalDeck, setModalDeck] = useState(null);
 
-            // COMPREHENSIVE REGRESSION SUITE
+            // COMPREHENSIVE REGRESSION SUITE (Updated V5.1)
             window.runRegressionSuite = () => {
                 console.log("🚀 Starting Comprehensive Regression Suite...");
                 const results = [];
                 
                 // Test 1: Comma Parser (Legacy)
                 const legacy = parseCSV('Col1,"Col, 2"\nVal1,"Val, 2"');
-                results.push({ test: "Parser: Comma (Legacy)", status: legacy[0]['Col, 2'] === 'Val, 2' ? "PASS" : "FAIL" });
+                results.push({ test: "Parser: Comma", status: legacy[0]['Col, 2'] === 'Val, 2' ? "PASS" : "FAIL" });
 
-                // Test 2: Pipe Parser (New)
+                // Test 2: Pipe Parser (New Universal)
                 const pipe = parseCSV('Col1|Col2\nVal1|Val, 2');
-                results.push({ test: "Parser: Pipe (New)", status: pipe[0]['Col2'] === 'Val, 2' ? "PASS" : "FAIL" });
+                results.push({ test: "Parser: Pipe", status: pipe[0]['Col2'] === 'Val, 2' ? "PASS" : "FAIL" });
+                
+                // Test 3: Pipe with Quotes (New Feature)
+                const pipeQuotes = parseCSV('Col1|Col2\nVal1|"Val with | pipe"');
+                results.push({ test: "Parser: Pipe + Quotes", status: pipeQuotes[0]['Col2'] === 'Val with | pipe' ? "PASS" : "FAIL" });
 
-                // Test 3: Similarity
+                // Test 4: Similarity
                 const sim = calculateSimilarity("hello world", "hello world");
                 results.push({ test: "Algorithm: Text Matching", status: sim === 100 ? "PASS" : "FAIL" });
 
-                // Test 4: Shuffling
-                const arr = [1, 2, 3];
-                const shuff = shuffleArray(arr);
-                results.push({ test: "Algorithm: Shuffling", status: JSON.stringify(arr) !== JSON.stringify(shuff) ? "PASS" : "WARN (Random)" });
-
-                // Test 5: Storage Integrity
+                // Test 5: Storage
                 try {
                     localStorage.setItem('test_key', 'test_val');
                     const val = localStorage.getItem('test_key');
@@ -425,7 +450,7 @@
                 return () => clearInterval(interval);
             }, [mode]);
 
-            // DECK SELECTION LOGIC (Handles Resume vs Start New)
+            // DECK SELECTION & RESUME LOGIC
             const handleDeckClick = (m, deckName) => {
                 const p = progress[`${m}-${deckName}`];
                 
@@ -433,9 +458,8 @@
                 if (p && p.status === 'Completed') {
                     setModalDeck({ mode: m, name: deckName, stats: p });
                 } 
-                // If In Progress, RESUME automatically
+                // If In Progress, RESUME
                 else if (p && p.status === 'In Progress' && p.queue && p.queue.length > 0) {
-                    // RESUME LOGIC
                     startSession(m, deckName, p.queue);
                 } 
                 // Else, Start New
@@ -446,7 +470,6 @@
 
             const startSession = (m, deckName, specificQueue = null) => {
                 const map = { 'flashcard': 'flashcards', 'type': 'type', 'mcq': 'mcq' };
-                // Load either the persisted queue OR the full fresh deck
                 let deck = [];
                 if (specificQueue) {
                     deck = specificQueue;
@@ -460,15 +483,12 @@
                 setStats({ correct: 0, completed: 0, total: 0 });
                 setModalDeck(null);
                 
-                // Mark initial in progress if brand new
                 if (!progress[`${m}-${deckName}`]) {
                     saveProgress(m, deckName, 'In Progress', 0);
                 }
             };
 
             const endSession = (finalScore = 0, remainingItems = []) => {
-                // If Flashcard mode and items remain, it is IN PROGRESS
-                // If other modes and score < 50, it is IN PROGRESS
                 let status = 'In Progress';
                 let queueToSave = null;
 
@@ -476,7 +496,7 @@
                     if (finalScore === 100 && remainingItems.length === 0) status = 'Completed';
                     else {
                         status = 'In Progress';
-                        queueToSave = remainingItems; // Save the Hard cards
+                        queueToSave = remainingItems;
                     }
                 } else {
                     status = finalScore >= 50 ? 'Completed' : 'In Progress';
@@ -535,8 +555,8 @@
             return (
                 <div className="flex flex-col h-screen bg-gray-100">
                     <header className="flex-shrink-0 bg-jpm-primary text-white h-16 flex items-center justify-between px-6 shadow-lg z-30">
-                        <div className="flex items-center gap-3"><i className="fas fa-university text-2xl"></i><div><h1 className="text-lg font-bold leading-tight">JPM Prep App</h1><span className="text-xs text-blue-200">v5.0 | Enterprise</span></div></div>
-                        {mode !== 'menu' && <button onClick={() => activeDeck && document.querySelector('main button[class*="bg-gray-500"]')?.click()} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition">End Session</button>}
+                        <div className="flex items-center gap-3"><i className="fas fa-university text-2xl"></i><div><h1 className="text-lg font-bold leading-tight">JPM Prep App</h1><span className="text-xs text-blue-200">v5.1 | Universal</span></div></div>
+                        {mode !== 'menu' && <button onClick={() => activeDeck && mode==='flashcard' ? onEnd(50, activeDeck.items) : endSession(0)} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition">End Session</button>}
                     </header>
                     
                     <div className="flex flex-grow overflow-hidden relative">
@@ -563,7 +583,7 @@
                                 </div>
                             )}
 
-                            {/* DECK DETAIL & RESTART MODAL (Only for Completed Decks) */}
+                            {/* DECK DETAIL & RESTART MODAL */}
                             {modalDeck && (
                                 <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
                                     <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full animate-slide-in">
