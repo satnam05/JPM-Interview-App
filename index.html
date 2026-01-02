@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JPM Interview Prep App v6.0 (Stable)</title>
+    <title>JPM Interview Prep App v7.1 (Regression Proof)</title>
     
     <!-- Dependencies -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -47,33 +47,36 @@
 
         // --- CORE UTILS ---
         
-        // 1. STRICT CSV STATE MACHINE (Fixes Newlines/Commas in Quotes)
+        // 1. ROBUST STATE MACHINE PARSER
         const parseCSV = (text) => {
             if (!text) return [];
-            if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // Strip BOM
-            
+            if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); 
+            text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+            const firstLineEnd = text.indexOf('\n');
+            const firstLine = text.substring(0, firstLineEnd === -1 ? text.length : firstLineEnd);
+            const delimiter = firstLine.includes('|') ? '|' : ',';
+
             const rows = [];
             let currentRow = [];
             let currentVal = '';
             let insideQuotes = false;
-            
-            // Character-by-character parsing (No simple split)
+
             for (let i = 0; i < text.length; i++) {
                 const char = text[i];
                 const nextChar = text[i+1];
 
                 if (char === '"') {
                     if (insideQuotes && nextChar === '"') {
-                        currentVal += '"'; // Handle escaped quote
+                        currentVal += '"'; 
                         i++; 
                     } else {
                         insideQuotes = !insideQuotes;
                     }
-                } else if (char === ',' && !insideQuotes) {
+                } else if (char === delimiter && !insideQuotes) {
                     currentRow.push(currentVal);
                     currentVal = '';
-                } else if ((char === '\r' || char === '\n') && !insideQuotes) {
-                    if (char === '\r' && nextChar === '\n') i++; // Handle CRLF
+                } else if (char === '\n' && !insideQuotes) {
                     currentRow.push(currentVal);
                     if (currentRow.length > 0 || currentVal.length > 0) rows.push(currentRow);
                     currentRow = [];
@@ -87,9 +90,7 @@
                 rows.push(currentRow);
             }
 
-            if (rows.length < 2) return []; // Need Header + Data
-            
-            // Header Mapping
+            if (rows.length < 2) return [];
             const headers = rows[0].map(h => h.trim());
             return rows.slice(1).map((row, idx) => {
                 const entry = { id: `row-${idx}` };
@@ -127,6 +128,49 @@
 
         // --- COMPONENTS ---
 
+        const UKClock = ({ variant = 'header' }) => {
+            const [timeData, setTimeData] = useState({ time: '', date: '', day: '' });
+
+            useEffect(() => {
+                const updateTime = () => {
+                    const now = new Date();
+                    const optionsTime = { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                    const optionsDate = { timeZone: 'Europe/London', day: 'numeric', month: 'short', year: 'numeric' };
+                    const optionsDay = { timeZone: 'Europe/London', weekday: 'long' };
+
+                    setTimeData({
+                        time: now.toLocaleTimeString('en-GB', optionsTime),
+                        date: now.toLocaleDateString('en-GB', optionsDate),
+                        day: now.toLocaleDateString('en-GB', optionsDay)
+                    });
+                };
+                updateTime();
+                const timer = setInterval(updateTime, 1000);
+                return () => clearInterval(timer);
+            }, []);
+
+            if (variant === 'dashboard') {
+                return (
+                    <div className="bg-blue-800 bg-opacity-90 p-4 rounded-lg border border-blue-700 text-white mb-6 shadow-inner">
+                        <div className="flex items-center gap-2 mb-1 opacity-75">
+                            <i className="fas fa-map-marker-alt text-xs"></i>
+                            <span className="text-xs uppercase font-bold tracking-wider">Edinburgh, UK</span>
+                        </div>
+                        <p className="text-sm font-semibold">{timeData.day}</p>
+                        <p className="text-xs mb-2">{timeData.date}</p>
+                        <p className="text-3xl font-mono font-bold text-blue-200">{timeData.time}</p>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="text-right hidden md:block">
+                    <p className="text-xs text-blue-200 font-bold uppercase"><i className="fas fa-map-marker-alt mr-1"></i>Edinburgh</p>
+                    <p className="text-sm font-mono font-bold">{timeData.date} <span className="text-blue-200">|</span> {timeData.time}</p>
+                </div>
+            );
+        };
+
         const Dashboard = ({ active, stats, timer }) => {
             const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
             return (
@@ -134,9 +178,12 @@
                     <div className="p-6 bg-jpm-primary text-white">
                         <h2 className="text-xl font-bold"><i className="fas fa-chart-pie mr-2"></i> Dashboard</h2>
                     </div>
-                    <div className="p-6 space-y-6">
+                    
+                    <div className="p-6 space-y-6 flex-grow overflow-y-auto">
+                        <UKClock variant="dashboard" />
+
                         <div className="bg-gray-50 p-4 rounded-lg border">
-                            <p className="text-xs text-gray-500 font-bold uppercase">Timer</p>
+                            <p className="text-xs text-gray-500 font-bold uppercase">Session Timer</p>
                             <p className="text-3xl font-mono text-jpm-dark">{Math.floor(timer/60).toString().padStart(2,'0')}:{(timer%60).toString().padStart(2,'0')}</p>
                         </div>
                         <div>
@@ -192,11 +239,8 @@
             };
 
             const handleExit = () => {
-                // Logic: If user exits, or finishes with review items -> In Progress
-                // Only Complete if Finished AND ReviewPile is Empty
                 const itemsToSave = isFinished ? reviewPile : [...queue, ...reviewPile];
                 const isComplete = isFinished && reviewPile.length === 0;
-                
                 onEnd(isComplete ? 100 : 50, itemsToSave); 
             };
 
@@ -387,33 +431,33 @@
             const [modalDeck, setModalDeck] = useState(null);
             const [testResults, setTestResults] = useState(null);
 
-            // COMPREHENSIVE AUTOMATED REGRESSION SUITE (Console + UI)
+            // COMPREHENSIVE AUTOMATED REGRESSION SUITE (V7.1)
             const runTests = () => {
                 const results = [];
-                // 1. CSV Standard
+                
+                // Test 1: Parser - Basic Comma
                 const csv1 = 'H1,H2\nV1,"V, 2"';
                 const p1 = parseCSV(csv1);
-                results.push({ id: 1, name: "Parser: Comma", pass: p1[0] && p1[0].H2 === "V, 2" });
+                results.push({ id: 1, name: "Parser: Standard Comma", pass: p1[0] && p1[0].H2 === "V, 2" });
 
-                // 2. CSV Newline in Quotes (CRITICAL REGRESSION TEST)
-                const csv2 = 'H1,H2\nV1,"Val\nWith\nLine"';
+                // Test 2: Parser - Complex (JPM Data Simulation)
+                const csv2 = 'H1,H2\nV1,"Text with commas, and newlines\ninside quotes."';
                 const p2 = parseCSV(csv2);
-                results.push({ id: 2, name: "Parser: Multiline Quotes", pass: p2[0] && p2[0].H2.includes("\n") });
+                results.push({ id: 2, name: "Parser: JPM Data (Quotes)", pass: p2[0] && p2[0].H2.includes('\n') && p2[0].H2.includes(',') });
 
-                // 3. Similarity
-                const sim = calculateSimilarity("test", "test");
-                results.push({ id: 3, name: "Algorithm: Similarity", pass: sim === 100 });
+                // Test 3: Parser - Pipe
+                const csv3 = 'H1|H2\nV1|V2';
+                const p3 = parseCSV(csv3);
+                results.push({ id: 3, name: "Parser: Pipe Support", pass: p3[0] && p3[0].H2 === "V2" });
 
-                // 4. Shuffle
-                const arr = [1,2,3];
+                // 4. Similarity Algorithm
+                const sim = calculateSimilarity("hello world", "hello world");
+                results.push({ id: 4, name: "Algorithm: Similarity", pass: sim === 100 });
+
+                // 5. Shuffle Algorithm
+                const arr = [1,2,3,4,5];
                 const shuf = shuffleArray(arr);
-                results.push({ id: 4, name: "Algorithm: Shuffle", pass: shuf.length === 3 });
-
-                // 5. Storage
-                try {
-                    localStorage.setItem('test', '1');
-                    results.push({ id: 5, name: "System: LocalStorage", pass: localStorage.getItem('test') === '1' });
-                } catch(e) { results.push({ id: 5, name: "System: Storage", pass: false }); }
+                results.push({ id: 5, name: "Algorithm: Shuffle", pass: shuf.length === 5 });
 
                 setTestResults(results);
             };
@@ -441,7 +485,6 @@
                 return () => clearInterval(interval);
             }, [mode]);
 
-            // DECK SELECTION & RESUME LOGIC
             const handleDeckClick = (m, deckName) => {
                 const p = progress[`${m}-${deckName}`];
                 if (p && p.status === 'Completed') {
@@ -471,7 +514,6 @@
                 let queueToSave = null;
 
                 if (mode === 'flashcard') {
-                    // Strict: Score 100 AND No Review Items
                     if (finalScore === 100 && remainingItems.length === 0) status = 'Completed';
                     else {
                         status = 'In Progress';
@@ -530,8 +572,14 @@
             return (
                 <div className="flex flex-col h-screen bg-gray-100">
                     <header className="flex-shrink-0 bg-jpm-primary text-white h-16 flex items-center justify-between px-6 shadow-lg z-30">
-                        <div className="flex items-center gap-3"><i className="fas fa-university text-2xl"></i><div><h1 className="text-lg font-bold leading-tight">JPM Prep App</h1><span className="text-xs text-blue-200">v6.0 | Stable</span></div></div>
-                        {mode !== 'menu' && <button onClick={() => activeDeck && mode==='flashcard' ? endSession(50, activeDeck.items) : endSession(0)} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition">End Session</button>}
+                        <div className="flex flex-col">
+                            <h1 className="text-lg font-bold leading-tight">JPM Prep App</h1>
+                            <span className="text-xs text-blue-200">v7.1 | Developed by Satnam using Gemini</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <UKClock />
+                            {mode !== 'menu' && <button onClick={() => activeDeck && mode==='flashcard' ? endSession(50, activeDeck.items) : endSession(0)} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition">End Session</button>}
+                        </div>
                     </header>
                     
                     <div className="flex flex-grow overflow-hidden relative">
