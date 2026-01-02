@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JPM Interview Prep App v4.0 (Final)</title>
+    <title>JPM Interview Prep App v5.0 (Resilient)</title>
     
     <!-- Dependencies -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -47,39 +47,34 @@
 
         // --- CORE UTILS ---
         
-        // 1. Robust CSV Parser (Handles BOM, Quotes, Newlines)
+        // 1. SMART PARSER (Supports Pipe '|' and Comma ',')
         const parseCSV = (text) => {
             if (!text) return [];
             if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // Remove BOM
             text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
             
-            const rows = [];
-            let currentRow = [];
-            let currentVal = '';
-            let insideQuotes = false;
+            const lines = text.split('\n').filter(l => l.trim().length > 0);
+            if (lines.length === 0) return [];
 
-            for (let i = 0; i < text.length; i++) {
-                const char = text[i];
-                if (char === '"') {
-                    if (insideQuotes && text[i+1] === '"') { currentVal += '"'; i++; }
-                    else insideQuotes = !insideQuotes;
-                } else if (char === ',' && !insideQuotes) {
-                    currentRow.push(currentVal); currentVal = '';
-                } else if (char === '\n' && !insideQuotes) {
-                    currentRow.push(currentVal);
-                    if(currentRow.length > 0) rows.push(currentRow);
-                    currentRow = []; currentVal = '';
-                } else currentVal += char;
-            }
-            if (currentVal) currentRow.push(currentVal);
-            if (currentRow.length > 0) rows.push(currentRow);
+            // Detect Delimiter based on header
+            const headerLine = lines[0];
+            const delimiter = headerLine.includes('|') ? '|' : ',';
+            
+            const headers = headerLine.split(delimiter).map(h => h.trim());
 
-            if (rows.length === 0) return [];
-            const headers = rows[0].map(h => h.trim());
-            return rows.slice(1).map((row, idx) => {
+            return lines.slice(1).map((line, idx) => {
+                // Handle split but respect quotes only if comma mode, pipe mode is strict split
+                let values;
+                if (delimiter === '|') {
+                    values = line.split('|');
+                } else {
+                    // Legacy Regex for Comma
+                    values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+                }
+
                 const entry = { id: `row-${idx}` };
                 headers.forEach((h, i) => {
-                    let val = row[i] || '';
+                    let val = values[i] || '';
                     val = val.trim();
                     if (val.startsWith('"') && val.endsWith('"')) val = val.substring(1, val.length - 1);
                     entry[h] = val.replace(/""/g, '"');
@@ -88,7 +83,6 @@
             });
         };
 
-        // 2. Similarity Algorithm
         const calculateSimilarity = (s1, s2) => {
             if (!s1 || !s2) return 0;
             const a = s1.toLowerCase(), b = s2.toLowerCase();
@@ -102,7 +96,6 @@
             return Math.round((1 - matrix[b.length][a.length] / Math.max(a.length, b.length)) * 100);
         };
 
-        // 3. Shuffle Algorithm
         const shuffleArray = (array) => {
             let arr = [...array];
             for (let i = arr.length - 1; i > 0; i--) {
@@ -134,486 +127,3 @@
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <div className="bg-green-50 p-2 rounded text-center border border-green-100">
-                                <span className="block text-xl font-bold text-green-600">{stats.correct}</span><span className="text-xs uppercase font-bold text-green-700">Correct</span>
-                            </div>
-                            <div className="bg-blue-50 p-2 rounded text-center border border-blue-100">
-                                <span className="block text-xl font-bold text-blue-600">{stats.completed}</span><span className="text-xs uppercase font-bold text-blue-700">Done</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        // FLASHCARD MODE (Fix #1: Loading State & Completion)
-        const FlashcardMode = ({ deckData, onEnd, onStatsUpdate }) => {
-            const [queue, setQueue] = useState(deckData);
-            const [current, setCurrent] = useState(deckData[0]);
-            const [flipped, setFlipped] = useState(false);
-            const [reviewPile, setReviewPile] = useState([]);
-            const [isFinished, setIsFinished] = useState(false);
-
-            useEffect(() => { 
-                if(queue.length > 0) {
-                    setCurrent(queue[0]); 
-                    setFlipped(false); 
-                } else {
-                    setIsFinished(true);
-                }
-            }, [queue]);
-
-            const handleRate = (rating) => {
-                if (rating === 'hard') {
-                    setReviewPile([...reviewPile, current]);
-                    onStatsUpdate(false);
-                } else {
-                    onStatsUpdate(true);
-                }
-                const remaining = queue.slice(1);
-                setQueue(remaining);
-            };
-
-            const startReview = () => {
-                setQueue(reviewPile);
-                setReviewPile([]);
-                setIsFinished(false);
-            };
-
-            if (isFinished) {
-                return (
-                    <div className="flex flex-col items-center justify-center h-full p-8 text-center animate-slide-in">
-                        <i className={`fas ${reviewPile.length === 0 ? 'fa-trophy text-yellow-400' : 'fa-clipboard-list text-jpm-primary'} text-6xl mb-4`}></i>
-                        <h2 className="text-3xl font-bold text-gray-800 mb-2">{reviewPile.length === 0 ? "Deck Mastered!" : "Session Complete"}</h2>
-                        <p className="text-gray-600 mb-8">{reviewPile.length === 0 ? "Great job!" : `Cards marked for review: ${reviewPile.length}`}</p>
-                        <div className="flex gap-4">
-                            {reviewPile.length > 0 && <button onClick={startReview} className="bg-jpm-primary text-white px-6 py-3 rounded-lg font-bold shadow hover:bg-jpm-dark">Review Hard</button>}
-                            <button onClick={() => onEnd(reviewPile.length === 0 ? 100 : 50)} className="bg-gray-500 text-white px-6 py-3 rounded-lg font-bold shadow hover:bg-gray-600">Return to Menu</button>
-                        </div>
-                    </div>
-                );
-            }
-
-            if (!current) return <div className="p-10 text-center">Preparing cards...</div>;
-
-            return (
-                <div className="flex flex-col items-center justify-center h-full max-w-3xl mx-auto w-full px-4">
-                    <div className="w-full flex justify-between mb-2 text-gray-500 font-bold text-sm">
-                        <span>Flashcard Mode</span>
-                        <span>Queue: {queue.length} | Review: {reviewPile.length}</span>
-                    </div>
-                    <div className={`card-object ${flipped ? 'is-flipped' : ''}`} onClick={() => setFlipped(!flipped)} role="button">
-                        <div className="card-face front">
-                            <div className="card-content no-scrollbar"><h3 className="text-2xl font-bold text-gray-800">{current.Question}</h3></div>
-                            <div className="absolute bottom-4 text-gray-400 text-xs uppercase tracking-widest">Tap to Flip</div>
-                        </div>
-                        <div className="card-face back">
-                            <div className="card-content no-scrollbar"><p className="text-lg text-gray-800 whitespace-pre-wrap">{current.Answer}</p></div>
-                        </div>
-                    </div>
-                    {flipped ? (
-                        <div className="flex gap-4 w-full mt-8">
-                            <button onClick={(e) => { e.stopPropagation(); handleRate('hard'); }} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-4 rounded-xl font-bold shadow"><i className="fas fa-times mr-2"></i> Hard</button>
-                            <button onClick={(e) => { e.stopPropagation(); handleRate('easy'); }} className="flex-1 bg-green-500 hover:bg-green-600 text-white py-4 rounded-xl font-bold shadow"><i className="fas fa-check mr-2"></i> Easy</button>
-                        </div>
-                    ) : (
-                        <button onClick={() => setFlipped(true)} className="mt-8 px-8 py-3 bg-jpm-primary text-white rounded-lg font-bold shadow hover:bg-jpm-dark w-full">Show Answer</button>
-                    )}
-                </div>
-            );
-        };
-
-        // TYPE MODE (Fix #2: Cumulative Accuracy & Success Criteria)
-        const TypeMode = ({ deckData, onEnd, onStatsUpdate }) => {
-            const [index, setIndex] = useState(0);
-            const [input, setInput] = useState("");
-            const [submitted, setSubmitted] = useState(false);
-            const [matchScore, setMatchScore] = useState(0);
-            const [totalAccuracy, setTotalAccuracy] = useState(0);
-            const current = deckData[index];
-
-            const handleSubmit = () => {
-                if(!input.trim()) return;
-                const score = calculateSimilarity(input, current.ModelAnswer);
-                setMatchScore(score);
-                setTotalAccuracy(prev => prev + score);
-                setSubmitted(true);
-                onStatsUpdate(score >= 50);
-            };
-
-            const handleNext = () => {
-                if(index < deckData.length - 1) {
-                    setIndex(index + 1); setInput(""); setSubmitted(false);
-                } else {
-                    const finalAvg = Math.round(totalAccuracy / deckData.length);
-                    onEnd(finalAvg);
-                }
-            };
-
-            return (
-                <div className="max-w-3xl mx-auto w-full pt-10 px-6">
-                    <div className="bg-white rounded-xl shadow-xl p-8 max-h-[80vh] overflow-y-auto">
-                        <span className="text-jpm-accent font-bold text-xs uppercase tracking-widest mb-2 block">Question {index + 1} of {deckData.length}</span>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-6">{current.Question}</h2>
-                        <textarea className={`w-full p-4 border-2 rounded-lg mb-4 focus:outline-none focus:border-jpm-primary transition h-32 resize-none ${submitted ? 'bg-gray-100 text-gray-500' : 'bg-white'}`}
-                            placeholder="Type answer..." value={input} onChange={(e) => !submitted && setInput(e.target.value)} readOnly={submitted} />
-                        {!submitted ? (
-                            <button onClick={handleSubmit} className="w-full bg-jpm-primary text-white py-3 rounded-lg font-bold hover:bg-jpm-dark">Submit</button>
-                        ) : (
-                            <div className="animate-slide-in">
-                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="font-bold text-gray-700">Model Answer:</span>
-                                        <span className={`px-2 py-1 rounded text-xs font-bold text-white ${matchScore >= 50 ? 'bg-green-500' : 'bg-orange-500'}`}>{matchScore}% Match</span>
-                                    </div>
-                                    <p className="text-gray-800 whitespace-pre-wrap">{current.ModelAnswer}</p>
-                                </div>
-                                <button onClick={handleNext} className="w-full bg-gray-800 text-white py-3 rounded-lg font-bold hover:bg-black">Next</button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        };
-
-        // MCQ MODE (Fix #4: Shuffling & Option B Bias)
-        const MCQMode = ({ deckData, onEnd, onStatsUpdate }) => {
-            const [index, setIndex] = useState(0);
-            const [selected, setSelected] = useState(null);
-            const [submitted, setSubmitted] = useState(false);
-            const [shuffledOptions, setShuffledOptions] = useState([]);
-            const [scoreCount, setScoreCount] = useState(0);
-            const current = deckData[index];
-
-            useEffect(() => {
-                const opts = [];
-                ['A','B','C','D'].forEach(letter => {
-                    if(current[`Option${letter}`]) opts.push({ text: current[`Option${letter}`], id: letter });
-                });
-                setShuffledOptions(shuffleArray(opts));
-                setSelected(null);
-                setSubmitted(false);
-            }, [index, current]);
-
-            const checkAnswer = () => {
-                const correctVal = current.Correct.trim();
-                let isMatch = false;
-                const selectedOptObj = shuffledOptions.find(o => o.text === selected);
-                
-                if (correctVal.length === 1 && ['A','B','C','D'].includes(correctVal.toUpperCase())) {
-                     if (selectedOptObj && selectedOptObj.id === correctVal.toUpperCase()) isMatch = true;
-                } else {
-                    if (selected.trim() === correctVal) isMatch = true;
-                }
-
-                setSubmitted(true);
-                if(isMatch) setScoreCount(prev => prev + 1);
-                onStatsUpdate(isMatch);
-            };
-
-            const handleNext = () => {
-                if(index < deckData.length - 1) {
-                    setIndex(index + 1);
-                } else {
-                    const finalScore = Math.round((scoreCount / deckData.length) * 100);
-                    onEnd(finalScore);
-                }
-            };
-
-            const getOptionStyle = (optText) => {
-                if (!submitted) return selected === optText ? "bg-blue-50 border-jpm-primary text-jpm-primary font-bold shadow" : "bg-white border-gray-200 hover:border-blue-300";
-                
-                const correctVal = current.Correct.trim();
-                const optObj = shuffledOptions.find(o => o.text === optText);
-                let isThisCorrect = false;
-
-                if (correctVal.length === 1) {
-                     if (optObj && optObj.id === correctVal.toUpperCase()) isThisCorrect = true;
-                } else {
-                    if (optText === correctVal) isThisCorrect = true;
-                }
-
-                if (isThisCorrect) return "bg-green-50 border-green-500 text-green-700 font-bold";
-                if (selected === optText) return "bg-red-50 border-red-500 text-red-700";
-                return "bg-gray-50 border-gray-100 text-gray-300 opacity-50";
-            };
-
-            return (
-                <div className="max-w-3xl mx-auto w-full pt-10 px-6">
-                    <div className="bg-white rounded-xl shadow-xl p-8">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-6">{current.Question}</h2>
-                        <div className="space-y-3 mb-6">
-                            {shuffledOptions.map((opt, i) => (
-                                <button key={i} onClick={() => !submitted && setSelected(opt.text)} className={`w-full text-left p-4 rounded-lg border-2 transition ${getOptionStyle(opt.text)}`}>
-                                    <span className="font-mono mr-3 opacity-50">{String.fromCharCode(65+i)}.</span> {opt.text}
-                                </button>
-                            ))}
-                        </div>
-                        {!submitted ? (
-                            <button onClick={checkAnswer} disabled={!selected} className="w-full bg-jpm-primary text-white py-3 rounded-lg font-bold hover:bg-jpm-dark disabled:opacity-50">Check Answer</button>
-                        ) : (
-                            <button onClick={handleNext} className="w-full bg-gray-800 text-white py-3 rounded-lg font-bold hover:bg-black">Next</button>
-                        )}
-                    </div>
-                </div>
-            );
-        };
-
-        const App = () => {
-            const [data, setData] = useState({ flashcards: [], type: [], mcq: [] });
-            const [mode, setMode] = useState('menu'); 
-            const [activeDeck, setActiveDeck] = useState(null);
-            const [stats, setStats] = useState({ correct: 0, completed: 0, total: 0 });
-            const [timer, setTimer] = useState(0);
-            const [progress, setProgress] = useState({});
-            const [modalDeck, setModalDeck] = useState(null);
-
-            // AUTOMATION: Regression Suite (Console Triggered)
-            window.runRegressionSuite = () => {
-                console.log("🚀 Starting Automation Suite...");
-                const results = [];
-                
-                // Test 1: CSV Parsing
-                const csv = 'Col1,"Col, 2"\nVal1,"Val, 2"';
-                const parsed = parseCSV(csv);
-                results.push({ test: "CSV Parser", status: parsed[0]['Col, 2'] === 'Val, 2' ? "PASS" : "FAIL" });
-
-                // Test 2: Similarity Logic
-                const sim = calculateSimilarity("hello world", "hello world");
-                results.push({ test: "Similarity Algorithm", status: sim === 100 ? "PASS" : "FAIL" });
-
-                // Test 3: Shuffling
-                const arr = [1, 2, 3, 4, 5];
-                const shuff = shuffleArray(arr);
-                results.push({ test: "Shuffling", status: JSON.stringify(arr) !== JSON.stringify(shuff) ? "PASS" : "WARN (Random)" });
-
-                console.table(results);
-                alert(`Regression Complete. ${results.filter(r => r.status === 'PASS').length} Passed.`);
-            };
-
-            useEffect(() => {
-                const load = async () => {
-                    try {
-                        const [f, t, m] = await Promise.all([
-                            fetch('flashcards.csv').then(r => r.ok ? r.text() : ""),
-                            fetch('type_answer.csv').then(r => r.ok ? r.text() : ""),
-                            fetch('mcq.csv').then(r => r.ok ? r.text() : "")
-                        ]);
-                        setData({ flashcards: f ? parseCSV(f) : [], type: t ? parseCSV(t) : [], mcq: m ? parseCSV(m) : [] });
-                    } catch(e) { console.error(e); }
-                    const saved = localStorage.getItem('jpm_prep_progress_v4');
-                    if(saved) setProgress(JSON.parse(saved));
-                };
-                load();
-            }, []);
-
-            useEffect(() => {
-                let interval;
-                if(mode !== 'menu') interval = setInterval(() => setTimer(t => t + 1), 1000);
-                else setTimer(0);
-                return () => clearInterval(interval);
-            }, [mode]);
-
-            // FIX #3: Deck Completion & Restart Logic
-            const handleDeckClick = (m, deckName) => {
-                const p = progress[`${m}-${deckName}`];
-                if (p) {
-                    setModalDeck({ mode: m, name: deckName, stats: p });
-                } else {
-                    startSession(m, deckName);
-                }
-            };
-
-            const startSession = (m, deckName) => {
-                const map = { 'flashcard': 'flashcards', 'type': 'type', 'mcq': 'mcq' };
-                const deck = data[map[m]].filter(d => d.Deck === deckName);
-                if(deck.length === 0) return;
-                setActiveDeck({ name: deckName, items: deck });
-                setMode(m);
-                setStats({ correct: 0, completed: 0, total: 0 });
-                setModalDeck(null);
-                
-                // Mark in progress if not already done
-                if (!progress[`${m}-${deckName}`]) {
-                    saveProgress(m, deckName, 'In Progress', 0);
-                }
-            };
-
-            const endSession = (finalScore = 0) => {
-                // Determine completion status (Score > 50% = Completed)
-                const status = finalScore >= 50 ? 'Completed' : 'In Progress';
-                saveProgress(mode, activeDeck.name, status, finalScore);
-                setMode('menu');
-                setActiveDeck(null);
-            };
-
-            const saveProgress = (m, d, status, score) => {
-                const newP = { ...progress, [`${m}-${d}`]: { status, score, date: new Date().toLocaleString() } };
-                setProgress(newP);
-                localStorage.setItem('jpm_prep_progress_v4', JSON.stringify(newP));
-            };
-
-            const updateStats = (isCorrect) => {
-                setStats(s => ({ total: s.total + 1, completed: s.completed + 1, correct: isCorrect ? s.correct + 1 : s.correct }));
-            };
-
-            const getDecks = (items) => [...new Set(items.map(i => i.Deck))].filter(Boolean);
-
-            const RenderDeckList = ({ items, mId }) => {
-                const decks = getDecks(items);
-                const activeDecks = decks.filter(d => progress[`${mId}-${d}`]);
-                const newDecks = decks.filter(d => !progress[`${mId}-${d}`]);
-
-                return (
-                    <div className="h-64 overflow-y-auto bg-gray-50 p-4">
-                        {activeDecks.length > 0 && <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">My Progress</h4>}
-                        {activeDecks.map(d => {
-                            const p = progress[`${mId}-${d}`];
-                            const isDone = p.status === 'Completed';
-                            return (
-                                <button key={d} onClick={() => handleDeckClick(mId, d)} className={`w-full text-left p-3 mb-2 border rounded flex justify-between items-center ${isDone ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
-                                    <span className="font-semibold text-gray-700">{d}</span>
-                                    {isDone ? <i className="fas fa-check-circle text-green-500"></i> : <i className="fas fa-spinner text-yellow-500"></i>}
-                                </button>
-                            )
-                        })}
-                        
-                        {newDecks.length > 0 && <h4 className="text-xs font-bold text-gray-500 uppercase mb-2 mt-4">New Decks</h4>}
-                        {newDecks.map(d => (
-                            <button key={d} onClick={() => startSession(mId, d)} className="w-full text-left p-3 mb-2 bg-white border border-gray-200 rounded hover:border-jpm-primary hover:text-jpm-primary transition flex justify-between items-center group">
-                                <span className="font-semibold">{d}</span>
-                                <i className="fas fa-play opacity-0 group-hover:opacity-100"></i>
-                            </button>
-                        ))}
-                    </div>
-                );
-            };
-
-            return (
-                <div className="flex flex-col h-screen bg-gray-100">
-                    <header className="flex-shrink-0 bg-jpm-primary text-white h-16 flex items-center justify-between px-6 shadow-lg z-30">
-                        <div className="flex items-center gap-3"><i className="fas fa-university text-2xl"></i><div><h1 className="text-lg font-bold leading-tight">JPM Prep App</h1><span className="text-xs text-blue-200">v4.0 | Enterprise</span></div></div>
-                        {mode !== 'menu' && <button onClick={() => endSession(0)} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition">End Session</button>}
-                    </header>
-                    
-                    <div className="flex flex-grow overflow-hidden relative">
-                        <Dashboard active={mode !== 'menu'} stats={stats} timer={timer} />
-                        
-                        <main className={`flex-grow overflow-y-auto transition-all duration-300 relative ${mode !== 'menu' ? 'ml-64' : ''}`}>
-                            {mode === 'menu' && (
-                                <div className="p-10 max-w-7xl mx-auto flex flex-col items-center justify-center h-full">
-                                    <h2 className="text-3xl font-bold text-gray-800 mb-10">Select Learning Mode</h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
-                                        {[
-                                            { id: 'flashcard', title: 'Flashcards', icon: 'fa-layer-group', color: 'bg-orange-500', items: data.flashcards },
-                                            { id: 'type', title: 'Type Answer', icon: 'fa-keyboard', color: 'bg-blue-600', items: data.type },
-                                            { id: 'mcq', title: 'MCQ Mode', icon: 'fa-tasks', color: 'bg-purple-600', items: data.mcq }
-                                        ].map(m => (
-                                            <div key={m.id} className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-transform hover:-translate-y-1">
-                                                <div className={`${m.color} p-6 text-white text-center`}>
-                                                    <i className={`fas ${m.icon} text-4xl mb-2`}></i><h3 className="text-xl font-bold">{m.title}</h3>
-                                                </div>
-                                                <RenderDeckList items={m.items} mId={m.id} />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* DECK DETAIL & RESTART MODAL */}
-                            {modalDeck && (
-                                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                                    <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full animate-slide-in">
-                                        <h3 className="text-2xl font-bold text-gray-800 mb-2">{modalDeck.name}</h3>
-                                        <div className="bg-gray-50 p-4 rounded mb-6">
-                                            <p className="text-sm text-gray-600">Status: <span className={`font-bold ${modalDeck.stats.status === 'Completed' ? 'text-green-600' : 'text-yellow-600'}`}>{modalDeck.stats.status}</span></p>
-                                            <p className="text-sm text-gray-600">Last Score: <span className="font-bold">{modalDeck.stats.score}%</span></p>
-                                            <p className="text-sm text-gray-600">Last Played: <span className="font-mono text-xs">{modalDeck.stats.date}</span></p>
-                                        </div>
-                                        <div className="flex gap-4">
-                                            <button onClick={() => setModalDeck(null)} className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300">Close</button>
-                                            <button onClick={() => startSession(modalDeck.mode, modalDeck.name)} className="flex-1 bg-jpm-primary text-white py-3 rounded-lg font-bold hover:bg-jpm-dark">Start New Session</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {mode === 'flashcard' && activeDeck && <FlashcardMode deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} />}
-                            {mode === 'type' && activeDeck && <TypeMode deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} />}
-                            {mode === 'mcq' && activeDeck && <MCQMode deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} />}
-                        </main>
-                    </div>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
-```
-
-### 2. How to Automate Regression Suite on GitHub
-
-Since this is a client-side app (HTML/JS) running on GitHub Pages, there isn't a server to run complex backend tests. However, you can automate the execution of the Regression Suite using **GitHub Actions**.
-
-**Step 1:** Create a new file in your computer named `regression_test.yml`.
-**Step 2:** Copy the code below into that file.
-**Step 3:** Upload this file to your GitHub repository in this specific folder structure: `.github/workflows/` (You must create these folders).
-    * Path: `[Your Repo Name]/.github/workflows/regression_test.yml`
-
-```yaml
-name: JPM App Regression Suite
-
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
-
-jobs:
-  test_app:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Install Puppeteer (Headless Browser)
-        run: npm install puppeteer
-
-      - name: Run Regression Suite
-        run: |
-          node -e "
-            const puppeteer = require('puppeteer');
-            (async () => {
-              const browser = await puppeteer.launch({headless: 'new'});
-              const page = await browser.newPage();
-              
-              // Load the local HTML file
-              await page.goto('file://' + process.cwd() + '/index.html');
-              
-              // Wait for React to load
-              await new Promise(r => setTimeout(r, 2000));
-              
-              // Inject the test runner script
-              const result = await page.evaluate(() => {
-                try {
-                  // Simulate the tests logic server-side
-                  const csv = 'Col1,\"Col 2\"\\nVal1,\"Val 2\"';
-                  // Call the internal functions if accessible, or mimic them
-                  // Since functions are internal to React, we do a basic load check here
-                  const title = document.title;
-                  return title.includes('JPM Interview') ? 'PASS' : 'FAIL';
-                } catch(e) { return 'ERROR: ' + e.toString(); }
-              });
-
-              console.log('Regression Test Result:', result);
-              await browser.close();
-              
-              if (result !== 'PASS') process.exit(1);
-            })();
-          "
