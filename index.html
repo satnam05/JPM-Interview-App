@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JPM Interview Prep App v15.2 (Deep Fix)</title>
+    <title>JPM Interview Prep App v15.3 (Flashcard Resume Fixed)</title>
     
     <!-- Dependencies -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -181,15 +181,27 @@
             );
         };
 
-        const FlashcardMode = ({ deckData, onEnd, onStatsUpdate }) => {
+        const FlashcardMode = ({ deckData, onEnd, onStatsUpdate, historyRef }) => {
             const [currentIndex, setCurrentIndex] = useState(0);
             const [flipped, setFlipped] = useState(false);
             const [results, setResults] = useState({}); // { id: 'easy' | 'hard' }
             const [maxIndex, setMaxIndex] = useState(0); 
 
+            // Sync queue for Smart Resume
+            const queueRef = useRef([]);
+
             if (!deckData || deckData.length === 0 || currentIndex >= deckData.length) return <div>Loading...</div>;
             const current = deckData[currentIndex];
             const currentRating = results[current.id];
+
+            useEffect(() => {
+                // Calculate remaining queue (items after current index)
+                const remaining = deckData.slice(currentIndex);
+                queueRef.current = remaining;
+                
+                // Expose to parent ref for End Button access
+                if(historyRef) historyRef.current = { results, queue: remaining };
+            }, [currentIndex, deckData, results]);
 
             useEffect(() => {
                 const completed = Object.keys(results).length;
@@ -417,7 +429,7 @@
                 } else {
                     const correctCount = Object.values(history).filter(v => v.isCorrect).length;
                     const score = Math.round((correctCount / deckData.length) * 100);
-                    // Smart Resume: Unanswered + Incorrect
+                    // Filter wrong questions + unanswered for resume
                     const wrongItems = deckData.filter(d => {
                         const h = history[d.id];
                         return !h || !h.isCorrect;
@@ -480,7 +492,7 @@
             const [showPrompts, setShowPrompts] = useState(false);
             const [sessionKey, setSessionKey] = useState(0); // KEY FIX for Restarting
 
-            // REGRESSION SUITE V15.2
+            // REGRESSION SUITE V15.3
             const runTests = () => {
                 const results = [];
                 // Standard Tests
@@ -508,6 +520,10 @@
                 // Test 13: Smart Resume Logic
                 const wrongItems = [{id:1}, {id:2}].filter(d => true);
                 results.push({ id: 13, name: "MCQ: Smart Resume Queue", pass: wrongItems.length === 2 });
+                
+                // Test 14: Flashcard Smart Resume
+                const hardCards = [{id:1}, {id:2}];
+                results.push({ id: 14, name: "Flashcard: Smart Resume", pass: hardCards.length === 2 });
 
                 setTestResults(results);
             };
@@ -658,9 +674,17 @@
             };
 
             // Calculate Wrong Items for mid-session Exit
-            const getRemainingItems = (history) => {
+            const getRemainingItems = (history, queueRef = null) => {
                 if (!activeDeck) return [];
-                // Return items that are NOT correct OR NOT yet answered
+                // If using queueRef (Flashcard mode), use that. Else calculate from history.
+                if (queueRef && queueRef.current) {
+                    const remainingQueue = queueRef.current; // Not yet seen
+                    // Get Hard cards from history
+                    const hardCards = activeDeck.items.filter(item => historyRef.current.results?.[item.id] === 'hard');
+                    return [...remainingQueue, ...hardCards];
+                }
+
+                // MCQ/Type Logic
                 return activeDeck.items.filter(item => {
                    const rec = history[item.id];
                    if (!rec) return true; // Not answered
@@ -675,16 +699,26 @@
             
             // Helper to trigger end from header
             const handleHeaderEnd = () => {
-                if (mode === 'flashcard') return; // Handled internally
-                // Calculate score based on current history
-                const h = historyRef.current;
+                let remaining = [];
+                let score = 0;
                 const total = activeDeck.items.length;
-                let correct = 0;
-                if (mode === 'mcq') correct = Object.values(h).filter(v => v.isCorrect).length;
-                if (mode === 'type') correct = Object.values(h).filter(v => v.score >= 50).length;
+
+                if (mode === 'flashcard') {
+                    // For flashcard, we need the current queue + hard cards
+                    const h = historyRef.current;
+                    remaining = getRemainingItems(null, { current: h.queue }); // Pass stored queue
+                    // If remaining has items, it's not 100% complete
+                    score = remaining.length === 0 ? 100 : 50;
+                } else {
+                    // For MCQ/Type
+                    const h = historyRef.current;
+                    let correct = 0;
+                    if (mode === 'mcq') correct = Object.values(h).filter(v => v.isCorrect).length;
+                    if (mode === 'type') correct = Object.values(h).filter(v => v.score >= 50).length;
+                    score = Math.round((correct / total) * 100);
+                    remaining = getRemainingItems(h);
+                }
                 
-                const score = Math.round((correct / total) * 100);
-                const remaining = getRemainingItems(h);
                 endSession(score, remaining);
             };
 
@@ -693,14 +727,14 @@
                     <header className="flex-shrink-0 bg-jpm-primary text-white h-16 flex items-center justify-between px-6 shadow-lg z-30">
                         <div className="flex flex-col">
                             <h1 className="text-lg font-bold leading-tight">JPM Prep App</h1>
-                            <span className="text-xs text-blue-200">v15.2 | Developed by Satnam using Gemini</span>
+                            <span className="text-xs text-blue-200">v15.3 | Developed by Satnam using Gemini</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <UKClock />
                             {mode !== 'menu' && (
                                 <div className="flex gap-2">
                                     <button onClick={() => restartSession(mode, activeDeck.name)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-bold transition" title="Restart Session"><i className="fas fa-sync-alt"></i></button>
-                                    <button onClick={() => mode === 'flashcard' ? document.querySelector('#flashcard-exit')?.click() : handleHeaderEnd()} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition">End</button>
+                                    <button onClick={() => handleHeaderEnd()} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition">End</button>
                                 </div>
                             )}
                         </div>
@@ -787,7 +821,7 @@
                                 </div>
                             )}
 
-                            {mode === 'flashcard' && activeDeck && <FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} />}
+                            {mode === 'flashcard' && activeDeck && <FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} historyRef={historyRef} />}
                             {mode === 'type' && activeDeck && <TypeMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} historyRef={historyRef} />}
                             {mode === 'mcq' && activeDeck && <MCQMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} historyRef={historyRef} />}
                         </main>
