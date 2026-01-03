@@ -142,6 +142,7 @@
             );
         };
 
+        // Updated Dashboard: Hidden on Mobile
         const Dashboard = ({ active, stats, timer }) => {
             const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
             return (
@@ -189,6 +190,7 @@
             // 1. EVENT LISTENER FOR END BUTTON (The Fix)
             useEffect(() => {
                 const handleEndEvent = () => {
+                    // Logic: Save Queue + Hard Cards
                     const remainingQueue = deckData.slice(currentIndex); 
                     const hardCards = deckData.filter(item => results[item.id] === 'hard');
                     
@@ -198,7 +200,7 @@
                         if (!combined.find(c => c.id === card.id)) combined.push(card);
                     });
 
-                    // Score logic: 100 if empty, else 50
+                    // If Queue is empty, score is 100 (Done). Else 50 (In Progress).
                     const score = combined.length === 0 ? 100 : 50;
                     onEnd(score, combined);
                 };
@@ -277,9 +279,11 @@
             const [history, setHistory] = useState({}); 
             
             if (!deckData || deckData.length === 0) return <div>No data.</div>;
+            
             const current = deckData[currentIndex];
             const currentRec = history[current.id] || { input: '', score: 0, submitted: false };
 
+            // End Event Listener
             useEffect(() => {
                 const handleEnd = () => {
                     const allScores = Object.values(history).map(h => h.score);
@@ -420,6 +424,7 @@
 
             const getOptionStyle = (optText) => {
                 if (!currentRec.selected) return "bg-white border-gray-200 hover:border-blue-300";
+                
                 const correctVal = current.Correct.trim();
                 const optObj = currentRec.shuffledOpts.find(o => o.text === optText);
                 let isThisCorrect = false;
@@ -598,6 +603,7 @@
                     if (finalScore === 100 && remainingItems.length === 0) status = 'Completed';
                     else { status = 'In Progress'; queueToSave = remainingItems; }
                 } else {
+                    // Type/MCQ: If items remaining (wrong ones), status is In Progress
                     status = finalScore >= 50 && remainingItems.length === 0 ? 'Completed' : 'In Progress';
                     if (status === 'In Progress') queueToSave = remainingItems;
                 }
