@@ -286,11 +286,13 @@
             );
         };
 
-        const TypeMode = ({ deckData, onEnd, onStatsUpdate }) => {
+        const TypeMode = ({ deckData, onEnd, onStatsUpdate, historyRef }) => {
             const [currentIndex, setCurrentIndex] = useState(0);
             const [history, setHistory] = useState({}); 
-            const [maxIndex, setMaxIndex] = useState(0);
-
+            
+            // Sync history to ref for smart resume
+            useEffect(() => { historyRef.current = history; }, [history]);
+            
             if (!deckData || deckData.length === 0 || currentIndex >= deckData.length) return <div>Loading...</div>;
             const current = deckData[currentIndex];
             const currentRec = history[current.id] || { input: '', score: 0, submitted: false };
@@ -308,15 +310,16 @@
             };
 
             const handleNext = () => {
-                const next = currentIndex + 1;
-                if (next < deckData.length) {
-                    setCurrentIndex(next);
-                    if (next > maxIndex) setMaxIndex(next);
+                if (currentIndex < deckData.length - 1) {
+                    setCurrentIndex(currentIndex + 1);
                 } else {
                     const allScores = Object.values(history).map(h => h.score);
                     const avg = allScores.reduce((a,b)=>a+b,0) / (deckData.length || 1);
-                    // Filter: Only wrong ones + Unanswered
-                    const wrongItems = deckData.filter(d => (history[d.id]?.score || 0) < 50);
+                    // Filter: Wrong items (<50) + Unanswered (not in history)
+                    const wrongItems = deckData.filter(d => {
+                        const rec = history[d.id];
+                        return !rec || rec.score < 50;
+                    });
                     onEnd(avg, wrongItems);
                 }
             };
@@ -363,10 +366,12 @@
             );
         };
 
-        const MCQMode = ({ deckData, onEnd, onStatsUpdate }) => {
+        const MCQMode = ({ deckData, onEnd, onStatsUpdate, historyRef }) => {
             const [currentIndex, setCurrentIndex] = useState(0);
             const [history, setHistory] = useState({}); 
-            const [maxIndex, setMaxIndex] = useState(0);
+            
+            // Sync to ref
+            useEffect(() => { historyRef.current = history; }, [history]);
             
             if (!deckData || deckData.length === 0 || currentIndex >= deckData.length) return <div>Loading...</div>;
             const current = deckData[currentIndex];
@@ -407,14 +412,12 @@
             };
 
             const handleNext = () => {
-                const next = currentIndex + 1;
-                if (next < deckData.length) {
-                    setCurrentIndex(next);
-                    if (next > maxIndex) setMaxIndex(next);
+                if (currentIndex < deckData.length - 1) {
+                    setCurrentIndex(currentIndex + 1);
                 } else {
                     const correctCount = Object.values(history).filter(v => v.isCorrect).length;
                     const score = Math.round((correctCount / deckData.length) * 100);
-                    // Filter wrong questions + unanswered for resume
+                    // Smart Resume: Unanswered + Incorrect
                     const wrongItems = deckData.filter(d => {
                         const h = history[d.id];
                         return !h || !h.isCorrect;
