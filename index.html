@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JPM Interview Prep App v20.2 (Mobile UI + Fix)</title>
+    <title>JPM Interview Prep App v20.2 (Event Bus Fix)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -45,7 +45,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
         // --- 1. CORE UTILS ---
         const parseCSV = (text) => {
@@ -172,35 +172,42 @@
             );
         };
 
-        // --- 3. GAME ENGINES ---
+        // --- 3. GAME ENGINES (EVENT BUS ENABLED) ---
 
-        const FlashcardMode = ({ deckData, onEnd, onStatsUpdate, historyRef }) => {
+        const FlashcardMode = ({ deckData, onEnd, onStatsUpdate }) => {
             const [currentIndex, setCurrentIndex] = useState(0);
             const [flipped, setFlipped] = useState(false);
             const [results, setResults] = useState({}); 
             const [maxIndex, setMaxIndex] = useState(0); 
 
-            // SAFETY: Handle Empty Deck
             if (!deckData || deckData.length === 0) return <div className="p-10 text-center text-gray-500">No cards in deck.</div>;
             const current = deckData[currentIndex];
             const currentRating = results[current.id];
 
-            // EXPOSE STATE for Header End Button
+            // EVENT BUS LISTENER
             useEffect(() => {
-                const remaining = deckData.slice(currentIndex); 
-                if(historyRef) {
-                    historyRef.current = { 
-                        results: results, 
-                        queue: remaining, 
-                        fullDeck: deckData,
-                        mode: 'flashcard' 
-                    };
-                }
-                
+                const handleEndSignal = () => {
+                    const remaining = deckData.slice(currentIndex);
+                    const hardCards = deckData.filter(item => results[item.id] === 'hard');
+                    
+                    // Combine queue + hard cards for "Wrong Items" list
+                    let queueToSave = [...remaining];
+                    hardCards.forEach(c => { if(!queueToSave.find(q => q.id === c.id)) queueToSave.push(c); });
+
+                    // Logic: If user ends early, score is 50 unless everything so far was easy
+                    const score = queueToSave.length === 0 ? 100 : 50;
+                    onEnd(score, queueToSave);
+                };
+
+                window.addEventListener('jpm-trigger-end', handleEndSignal);
+                return () => window.removeEventListener('jpm-trigger-end', handleEndSignal);
+            }, [currentIndex, results, deckData, onEnd]);
+
+            useEffect(() => {
                 const completed = Object.keys(results).length;
                 const correct = Object.values(results).filter(r => r === 'easy').length;
                 onStatsUpdate({ completed, correct });
-            }, [currentIndex, results, deckData, historyRef, onStatsUpdate]); 
+            }, [results, onStatsUpdate]); 
 
             const handleRate = (rating) => {
                 setResults(prev => ({ ...prev, [current.id]: rating }));
@@ -259,15 +266,24 @@
             );
         };
 
-        const TypeMode = ({ deckData, onEnd, onStatsUpdate, historyRef }) => {
+        const TypeMode = ({ deckData, onEnd, onStatsUpdate }) => {
             const [currentIndex, setCurrentIndex] = useState(0);
             const [history, setHistory] = useState({}); 
-            
-            useEffect(() => { historyRef.current = history; }, [history, historyRef]);
             
             if (!deckData || deckData.length === 0) return <div>No data.</div>;
             const current = deckData[currentIndex];
             const currentRec = history[current.id] || { input: '', score: 0, submitted: false };
+
+            // EVENT BUS LISTENER
+            useEffect(() => {
+                const handleEndSignal = () => {
+                     const avg = Object.values(history).reduce((a,b)=>a+b.score,0) / deckData.length;
+                     const wrongItems = deckData.filter(d => (history[d.id]?.score || 0) < 50);
+                     onEnd(Math.round(avg || 0), wrongItems);
+                };
+                window.addEventListener('jpm-trigger-end', handleEndSignal);
+                return () => window.removeEventListener('jpm-trigger-end', handleEndSignal);
+            }, [history, deckData, onEnd]);
 
             useEffect(() => {
                 const done = Object.keys(history).filter(k => history[k].submitted).length;
@@ -333,15 +349,28 @@
             );
         };
 
-        const MCQMode = ({ deckData, onEnd, onStatsUpdate, historyRef }) => {
+        const MCQMode = ({ deckData, onEnd, onStatsUpdate }) => {
             const [currentIndex, setCurrentIndex] = useState(0);
             const [history, setHistory] = useState({}); 
-            
-            useEffect(() => { historyRef.current = history; }, [history, historyRef]);
             
             if (!deckData || deckData.length === 0) return <div>No Data.</div>;
             const current = deckData[currentIndex];
             const currentRec = history[current.id] || { selected: null, isCorrect: false, shuffledOpts: [] };
+
+            // EVENT BUS LISTENER
+            useEffect(() => {
+                const handleEndSignal = () => {
+                    const correctCount = Object.values(history).filter(v => v.isCorrect).length;
+                    const score = Math.round((correctCount / deckData.length) * 100);
+                    const wrongItems = deckData.filter(d => {
+                        const h = history[d.id];
+                        return !h || !h.isCorrect;
+                    });
+                    onEnd(score, wrongItems);
+                };
+                window.addEventListener('jpm-trigger-end', handleEndSignal);
+                return () => window.removeEventListener('jpm-trigger-end', handleEndSignal);
+            }, [history, deckData, onEnd]);
 
             useEffect(() => {
                 if (currentRec.shuffledOpts.length === 0) {
@@ -565,49 +594,13 @@
                 setModalDeck(null);
                 setSessionKey(prev => prev + 1);
             };
-
-            const getRemainingItems = (history, queueRef = null) => {
-                if (!activeDeck) return [];
-                if (queueRef && queueRef.current) {
-                    const remainingQueue = queueRef.current;
-                    const hardCards = activeDeck.items.filter(item => historyRef.current.results?.[item.id] === 'hard');
-                    const combined = [...remainingQueue];
-                    hardCards.forEach(card => { if (!combined.find(c => c.id === card.id)) combined.push(card); });
-                    return combined;
-                }
-                return activeDeck.items.filter(item => {
-                   const rec = history[item.id];
-                   if (!rec) return true; 
-                   if (mode === 'mcq' && !rec.isCorrect) return true; 
-                   if (mode === 'type' && rec.score < 50) return true; 
-                   return false; 
-                });
-            };
             
-            const historyRef = useRef({}); 
-            
+            // EVENT BUS TRIGGER (Cleaned up ref logic)
             const handleHeaderEnd = () => {
-                let remaining = [];
-                let score = 0;
-                const total = activeDeck.items.length;
-
-                if (mode === 'flashcard') {
-                    const h = historyRef.current;
-                    remaining = getRemainingItems(null, { current: h.queue }); 
-                    score = remaining.length === 0 ? 100 : 50;
-                } else {
-                    const h = historyRef.current;
-                    let correct = 0;
-                    if (mode === 'mcq') correct = Object.values(h).filter(v => v.isCorrect).length;
-                    if (mode === 'type') correct = Object.values(h).filter(v => v.score >= 50).length;
-                    score = Math.round((correct / total) * 100);
-                    remaining = getRemainingItems(h);
-                }
-                
-                endSession(score, remaining);
+                window.dispatchEvent(new CustomEvent('jpm-trigger-end'));
             };
 
-            const endSession = (finalScore = 0, remainingItems = []) => {
+            const endSession = useCallback((finalScore = 0, remainingItems = []) => {
                 let status = 'In Progress';
                 let queueToSave = null;
 
@@ -622,7 +615,7 @@
                 saveProgress(mode, activeDeck.name, status, finalScore, queueToSave);
                 setMode('menu');
                 setActiveDeck(null);
-            };
+            }, [mode, activeDeck, progress]);
 
             const saveProgress = (m, d, status, score, queue = null) => {
                 const newP = { ...progress, [`${m}-${d}`]: { status, score, date: new Date().toLocaleString(), queue } };
@@ -634,9 +627,9 @@
                 saveProgress('study', deckName, 'Completed', 100);
             };
 
-            const updateStats = ({ completed, correct }) => {
-                setStats({ total: activeDeck.items.length, completed, correct });
-            };
+            const updateStats = useCallback(({ completed, correct }) => {
+                if(activeDeck) setStats({ total: activeDeck.items.length, completed, correct });
+            }, [activeDeck]);
 
             const getDecks = (items) => [...new Set(items.map(i => i.Deck))].filter(Boolean);
 
@@ -785,9 +778,9 @@
                                 </div>
                             )}
 
-                            {mode === 'flashcard' && activeDeck && <FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} historyRef={historyRef} />}
-                            {mode === 'type' && activeDeck && <TypeMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} historyRef={historyRef} />}
-                            {mode === 'mcq' && activeDeck && <MCQMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} historyRef={historyRef} />}
+                            {mode === 'flashcard' && activeDeck && <FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} />}
+                            {mode === 'type' && activeDeck && <TypeMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} />}
+                            {mode === 'mcq' && activeDeck && <MCQMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} />}
                         </main>
                     </div>
                 </div>
