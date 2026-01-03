@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JPM Interview Prep App v20.2 (Mobile UI Final)</title>
+    <title>JPM Interview Prep App v20.2 (Mobile UI + Fix)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -682,7 +682,7 @@
                             {mode !== 'menu' && (
                                 <div className="flex gap-2">
                                     <button onClick={() => restartSession(mode, activeDeck.name)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-bold transition" title="Restart Session"><i className="fas fa-sync-alt"></i></button>
-                                    <button onClick={() => mode === 'flashcard' ? document.querySelector('#flashcard-exit')?.click() : handleHeaderEnd()} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition">End</button>
+                                    <button onClick={handleHeaderEnd} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition">End</button>
                                 </div>
                             )}
                         </div>
