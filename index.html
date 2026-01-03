@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JPM Interview Prep App v20.4 (UI Clip Fix)</title>
+    <title>JPM Interview Prep App v20.5 (iPad UI Fix)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -453,7 +453,7 @@
             const [showPrompts, setShowPrompts] = useState(false);
             const [sessionKey, setSessionKey] = useState(0); 
 
-            // --- 4. REGRESSION SUITE V20.4 (30 TESTS) ---
+            // --- 4. REGRESSION SUITE V20.5 (30 TESTS) ---
             const runTests = () => {
                 const results = [];
                 const csv1 = 'H1,H2\nV1,"V, 2"'; results.push({ id: 1, name: "Data: Comma", pass: parseCSV(csv1)[0].H2 === "V, 2" });
@@ -498,9 +498,7 @@
                 results.push({ id: 26, name: "Data: Skills Loaded", pass: true }); 
                 results.push({ id: 27, name: "Data: Vocab Loaded", pass: true }); 
                 results.push({ id: 28, name: "UI: 6 Modes", pass: document.querySelectorAll('.grid > div').length >= 6 });
-
-                // NEW TESTS V20.4
-                // Ensure content is not forced to center (which causes clipping)
+                
                 const menuContainer = document.querySelector('.overflow-y-auto .justify-start');
                 results.push({ id: 29, name: "UI: Vertical Safety", pass: !!menuContainer });
                 results.push({ id: 30, name: "UI: Grid Consistency", pass: document.querySelector('.grid').children.length > 0 });
@@ -671,7 +669,7 @@
                     <header className="flex-shrink-0 bg-jpm-primary text-white h-16 flex items-center justify-between px-6 shadow-lg z-30">
                         <div className="flex flex-col">
                             <h1 className="text-lg font-bold leading-tight">JPM Prep App</h1>
-                            <span className="text-xs text-blue-200">v20.4 | Developed by Satnam using Gemini</span>
+                            <span className="text-xs text-blue-200">v20.5 | Developed by Satnam using Gemini</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <UKClock />
@@ -717,11 +715,11 @@
                                         ))}
                                     </div>
                                     <div className="fixed bottom-6 right-4 flex flex-col gap-3 z-50">
-                                         <button onClick={() => setShowPrompts(true)} className="bg-jpm-primary text-white p-3 rounded-full shadow-lg hover:bg-jpm-dark transition md:w-auto md:px-4 md:py-2 md:rounded-lg md:flex md:items-center md:gap-2">
-                                            <i className="fas fa-robot"></i> <span className="hidden md:inline">LLM Prompts</span>
+                                         <button onClick={() => setShowPrompts(true)} className="bg-jpm-primary text-white p-3 rounded-full shadow-lg hover:bg-jpm-dark transition xl:w-auto xl:px-4 xl:py-2 xl:rounded-lg xl:flex xl:items-center xl:gap-2">
+                                            <i className="fas fa-robot"></i> <span className="hidden xl:inline">LLM Prompts</span>
                                          </button>
-                                         <button onClick={runTests} className="bg-gray-800 text-white p-3 rounded-full shadow-lg hover:bg-black transition md:w-auto md:px-4 md:py-2 md:rounded-lg md:flex md:items-center md:gap-2">
-                                            <i className="fas fa-bug"></i> <span className="hidden md:inline">DevTools</span>
+                                         <button onClick={runTests} className="bg-gray-800 text-white p-3 rounded-full shadow-lg hover:bg-black transition xl:w-auto xl:px-4 xl:py-2 xl:rounded-lg xl:flex xl:items-center xl:gap-2">
+                                            <i className="fas fa-bug"></i> <span className="hidden xl:inline">DevTools</span>
                                          </button>
                                     </div>
                                 </div>
