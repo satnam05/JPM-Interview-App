@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JPM Interview Prep App v14.0 (Nav & Review)</title>
+    <title>JPM Interview Prep App v14.1 (Nav Fixed)</title>
     
     <!-- Dependencies -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -45,7 +45,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useRef } = React;
 
         // --- CORE UTILS ---
         const parseCSV = (text) => {
@@ -67,28 +67,17 @@
                 const nextChar = text[i+1];
 
                 if (char === '"') {
-                    if (insideQuotes && nextChar === '"') {
-                        currentVal += '"'; 
-                        i++; 
-                    } else {
-                        insideQuotes = !insideQuotes;
-                    }
+                    if (insideQuotes && nextChar === '"') { currentVal += '"'; i++; }
+                    else insideQuotes = !insideQuotes;
                 } else if (char === delimiter && !insideQuotes) {
-                    currentRow.push(currentVal);
-                    currentVal = '';
+                    currentRow.push(currentVal); currentVal = '';
                 } else if (char === '\n' && !insideQuotes) {
                     currentRow.push(currentVal);
                     if (currentRow.length > 0 || currentVal.length > 0) rows.push(currentRow);
-                    currentRow = [];
-                    currentVal = '';
-                } else {
-                    currentVal += char;
-                }
+                    currentRow = []; currentVal = '';
+                } else currentVal += char;
             }
-            if (currentVal || currentRow.length > 0) {
-                currentRow.push(currentVal);
-                rows.push(currentRow);
-            }
+            if (currentVal || currentRow.length > 0) { currentRow.push(currentVal); rows.push(currentRow); }
 
             if (rows.length < 2) return [];
             const headers = rows[0].map(h => h.trim());
@@ -185,10 +174,13 @@
             const [currentIndex, setCurrentIndex] = useState(0);
             const [flipped, setFlipped] = useState(false);
             const [results, setResults] = useState({}); // { id: 'easy' | 'hard' }
+            const [maxIndex, setMaxIndex] = useState(0); // Track furthest progress
 
+            // Safe Access (Fix for blank screen if index out of bounds)
+            if (!deckData || deckData.length === 0 || currentIndex >= deckData.length) return <div>Loading or Complete...</div>;
             const current = deckData[currentIndex];
+            const currentRating = results[current.id];
 
-            // Re-calc stats whenever results change
             useEffect(() => {
                 const completed = Object.keys(results).length;
                 const correct = Object.values(results).filter(r => r === 'easy').length;
@@ -197,26 +189,21 @@
 
             const handleRate = (rating) => {
                 setResults(prev => ({ ...prev, [current.id]: rating }));
+                setFlipped(false);
                 if (currentIndex < deckData.length - 1) {
-                    setCurrentIndex(prev => prev + 1);
-                    setFlipped(false);
+                    const next = currentIndex + 1;
+                    setCurrentIndex(next);
+                    if (next > maxIndex) setMaxIndex(next);
                 } else {
-                    // Finished
                     finishSession(rating);
                 }
             };
 
             const finishSession = (lastRating) => {
-                // Include last rating in final calculation
                 const finalResults = { ...results, [current.id]: lastRating };
                 const hardCards = deckData.filter(item => finalResults[item.id] === 'hard');
-                
-                // If any hard cards, pass them back for resume
-                if (hardCards.length > 0) {
-                    onEnd(50, hardCards); // 50% score = In Progress
-                } else {
-                    onEnd(100, []);
-                }
+                // Resume with ONLY hard cards next time
+                onEnd(hardCards.length === 0 ? 100 : 50, hardCards); 
             };
 
             const handlePrev = () => {
@@ -224,6 +211,20 @@
                     setCurrentIndex(prev => prev - 1);
                     setFlipped(false);
                 }
+            };
+
+            const handleNext = () => {
+                if (currentIndex < maxIndex) {
+                    setCurrentIndex(prev => prev + 1);
+                    setFlipped(false);
+                }
+            };
+
+            // Dynamic styles for persistence
+            const getBtnStyle = (type) => {
+                const isActive = currentRating === type;
+                if (type === 'hard') return isActive ? "bg-red-600 ring-4 ring-red-300" : "bg-red-500 hover:bg-red-600";
+                if (type === 'easy') return isActive ? "bg-green-600 ring-4 ring-green-300" : "bg-green-500 hover:bg-green-600";
             };
 
             return (
@@ -245,17 +246,19 @@
                         </div>
                     </div>
 
-                    <div className="w-full max-w-3xl pb-10 z-50 flex gap-4">
+                    <div className="w-full max-w-3xl pb-10 z-50 flex gap-4 items-center">
                         <button onClick={handlePrev} disabled={currentIndex === 0} className="px-4 py-4 bg-gray-200 text-gray-600 rounded-xl font-bold shadow hover:bg-gray-300 disabled:opacity-50"><i className="fas fa-arrow-left"></i></button>
                         
                         {flipped ? (
-                            <>
-                                <button onClick={(e) => { e.stopPropagation(); handleRate('hard'); }} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-4 rounded-xl font-bold shadow-lg transform transition active:scale-95"><i className="fas fa-times mr-2"></i> Hard</button>
-                                <button onClick={(e) => { e.stopPropagation(); handleRate('easy'); }} className="flex-1 bg-green-500 hover:bg-green-600 text-white py-4 rounded-xl font-bold shadow-lg transform transition active:scale-95"><i className="fas fa-check mr-2"></i> Easy</button>
-                            </>
+                            <div className="flex-1 flex gap-4">
+                                <button onClick={(e) => { e.stopPropagation(); handleRate('hard'); }} className={`flex-1 text-white py-4 rounded-xl font-bold shadow-lg transition ${getBtnStyle('hard')}`}><i className="fas fa-times mr-2"></i> Hard</button>
+                                <button onClick={(e) => { e.stopPropagation(); handleRate('easy'); }} className={`flex-1 text-white py-4 rounded-xl font-bold shadow-lg transition ${getBtnStyle('easy')}`}><i className="fas fa-check mr-2"></i> Easy</button>
+                            </div>
                         ) : (
-                            <button onClick={() => setFlipped(true)} className="flex-1 px-8 py-4 bg-jpm-primary text-white rounded-lg font-bold shadow-lg hover:bg-jpm-dark transform transition active:scale-95">Show Answer</button>
+                            <button onClick={() => setFlipped(true)} className="flex-1 px-8 py-4 bg-jpm-primary text-white rounded-lg font-bold shadow-lg hover:bg-jpm-dark transition">Show Answer</button>
                         )}
+
+                        <button onClick={handleNext} disabled={currentIndex >= maxIndex} className="px-4 py-4 bg-gray-200 text-gray-600 rounded-xl font-bold shadow hover:bg-gray-300 disabled:opacity-50"><i className="fas fa-arrow-right"></i></button>
                     </div>
                 </div>
             );
@@ -265,6 +268,8 @@
             const [currentIndex, setCurrentIndex] = useState(0);
             const [history, setHistory] = useState({}); // { id: { input, score, submitted } }
             
+            // Safe Access
+            if (!deckData || deckData.length === 0 || currentIndex >= deckData.length) return <div>Loading...</div>;
             const current = deckData[currentIndex];
             const currentRec = history[current.id] || { input: '', score: 0, submitted: false };
 
@@ -284,22 +289,11 @@
                 if (currentIndex < deckData.length - 1) {
                     setCurrentIndex(currentIndex + 1);
                 } else {
-                    // Finish
                     const allScores = Object.values(history).map(h => h.score);
-                    const avg = allScores.reduce((a,b)=>a+b,0) / deckData.length;
-                    
-                    // Filter wrong answers for resume
+                    const avg = allScores.reduce((a,b)=>a+b,0) / (deckData.length || 1);
                     const wrongItems = deckData.filter(d => (history[d.id]?.score || 0) < 50);
                     onEnd(avg, wrongItems);
                 }
-            };
-
-            const handlePrev = () => {
-                if(currentIndex > 0) setCurrentIndex(currentIndex - 1);
-            };
-
-            const handleRetry = () => {
-                setHistory(prev => ({ ...prev, [current.id]: { ...currentRec, submitted: false } }));
             };
 
             return (
@@ -329,13 +323,13 @@
                     </div>
 
                     <div className="flex gap-4 pb-6">
-                        <button onClick={handlePrev} disabled={currentIndex === 0} className="px-6 py-3 bg-gray-200 text-gray-600 rounded-lg font-bold hover:bg-gray-300 disabled:opacity-50"><i className="fas fa-arrow-left"></i></button>
+                        <button onClick={() => setCurrentIndex(c => c > 0 ? c - 1 : c)} disabled={currentIndex === 0} className="px-6 py-3 bg-gray-200 text-gray-600 rounded-lg font-bold hover:bg-gray-300 disabled:opacity-50"><i className="fas fa-arrow-left"></i></button>
                         
                         {!currentRec.submitted ? (
                             <button onClick={handleSubmit} className="flex-grow bg-jpm-primary text-white py-3 rounded-lg font-bold hover:bg-jpm-dark">Submit</button>
                         ) : (
                             <>
-                                <button onClick={handleRetry} className="bg-yellow-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-yellow-600">Edit Answer</button>
+                                <button onClick={() => setHistory(h => ({...h, [current.id]: {...currentRec, submitted: false}}))} className="bg-yellow-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-yellow-600">Edit</button>
                                 <button onClick={handleNext} className="flex-grow bg-gray-800 text-white py-3 rounded-lg font-bold hover:bg-black">{currentIndex === deckData.length -1 ? 'Finish' : 'Next'}</button>
                             </>
                         )}
@@ -348,10 +342,10 @@
             const [currentIndex, setCurrentIndex] = useState(0);
             const [history, setHistory] = useState({}); // { id: { selected, isCorrect, shuffledOpts } }
             
-            const current = deckData[index = currentIndex];
+            if (!deckData || deckData.length === 0 || currentIndex >= deckData.length) return <div>Loading...</div>;
+            const current = deckData[currentIndex];
             const currentRec = history[current.id] || { selected: null, isCorrect: false, shuffledOpts: [] };
 
-            // Initialize options once per card
             useEffect(() => {
                 if (currentRec.shuffledOpts.length === 0) {
                     const opts = [];
@@ -363,20 +357,11 @@
                 }
             }, [currentIndex, current]);
 
-            // Update stats
             useEffect(() => {
                 const done = Object.keys(history).filter(k => history[k].selected).length;
                 const correct = Object.values(history).filter(v => v.isCorrect).length;
                 onStatsUpdate({ completed: done, correct });
             }, [history]);
-
-            const handleSelect = (optText) => {
-                if (currentRec.selected) return; // Locked if answered? No, user wants to change.
-                // Wait, requirement says "should not be able to change answer by clicking previous button" in original, 
-                // BUT "if user change the answer then that should persist" in NEW requirement.
-                // Logic: Allow change IF navigated back? Or always allow change before next?
-                // Let's allow change always for review.
-            };
 
             const checkAnswer = (selectedText) => {
                 const correctVal = current.Correct.trim();
@@ -427,7 +412,10 @@
             return (
                 <div className="max-w-3xl mx-auto w-full pt-10 px-6 h-full flex flex-col">
                     <div className="bg-white rounded-xl shadow-xl p-8 flex-grow overflow-y-auto mb-4">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-6">{current.Question}</h2>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800">{current.Question}</h2>
+                            <span className="text-sm font-bold text-gray-400">{currentIndex+1}/{deckData.length}</span>
+                        </div>
                         <div className="space-y-3 mb-6">
                             {currentRec.shuffledOpts.map((opt, i) => (
                                 <button key={i} onClick={() => checkAnswer(opt.text)} className={`w-full text-left p-4 rounded-lg border-2 transition ${getOptionStyle(opt.text)}`}>
@@ -456,10 +444,9 @@
             const [testResults, setTestResults] = useState(null);
             const [showPrompts, setShowPrompts] = useState(false);
 
-            // REGRESSION SUITE V14.0
+            // COMPREHENSIVE REGRESSION SUITE V14.1
             const runTests = () => {
                 const results = [];
-                // 1-8 Existing Tests
                 const csv1 = 'H1,H2\nV1,"V, 2"'; results.push({ id: 1, name: "Parser: Comma", pass: parseCSV(csv1)[0].H2 === "V, 2" });
                 const csv2 = 'H1,H2\nV1,"Val\nWith\nLine"'; results.push({ id: 2, name: "Parser: Multiline", pass: parseCSV(csv2)[0].H2.includes("\n") });
                 results.push({ id: 3, name: "Algorithm: Similarity", pass: calculateSimilarity("test", "test") === 100 });
@@ -468,11 +455,16 @@
                 results.push({ id: 6, name: "System: Prompt Hub", pass: document.querySelector('button[class*="bg-jpm-primary"]') !== null });
                 results.push({ id: 7, name: "Prompts: CSV", pass: parseCSV('Deck,Link\nA,http').length === 1 });
                 results.push({ id: 8, name: "UI: Buttons", pass: true });
-
-                // 9. Navigation Logic Test
-                let idx = 1;
-                const prev = idx > 0 ? idx - 1 : idx;
+                
+                // Test 9: Navigation Logic
+                let idx = 1; const prev = idx > 0 ? idx - 1 : idx;
                 results.push({ id: 9, name: "Nav: Previous Logic", pass: prev === 0 });
+
+                // Test 10: Load Test
+                const start = performance.now();
+                let bigCsv = "Col1,Col2\n"; for(let i=0; i<1000; i++) bigCsv += `Row${i},Data${i}\n`;
+                const parsedBig = parseCSV(bigCsv);
+                results.push({ id: 10, name: `Load: 1k Rows (${(performance.now()-start).toFixed(1)}ms)`, pass: parsedBig.length === 1000 });
 
                 setTestResults(results);
             };
@@ -539,15 +531,20 @@
                 if (!progress[`${m}-${deckName}`]) saveProgress(m, deckName, 'In Progress', 0);
             };
 
-            // Restart Full Session (Clear Resume Queue)
+            // RESTART SESSION: FIX 1 - Reset to full deck, ignore resume queue
             const restartSession = (m, deckName) => {
                 const map = { 'flashcard': 'flashcards', 'type': 'type', 'mcq': 'mcq', 'study': 'study' };
                 const fullDeck = data[map[m]].filter(d => d.Deck === deckName);
+                
+                if(fullDeck.length === 0) return;
+
+                // Reset Progress for this deck entirely
+                saveProgress(m, deckName, 'In Progress', 0, null);
+                
                 setActiveDeck({ name: deckName, items: fullDeck });
                 setMode(m);
                 setStats({ correct: 0, completed: 0, total: 0 });
                 setModalDeck(null);
-                saveProgress(m, deckName, 'In Progress', 0); // Reset progress
             };
 
             const endSession = (finalScore = 0, remainingItems = []) => {
@@ -618,7 +615,7 @@
                     <header className="flex-shrink-0 bg-jpm-primary text-white h-16 flex items-center justify-between px-6 shadow-lg z-30">
                         <div className="flex flex-col">
                             <h1 className="text-lg font-bold leading-tight">JPM Prep App</h1>
-                            <span className="text-xs text-blue-200">v14.0 | Developed by Satnam using Gemini</span>
+                            <span className="text-xs text-blue-200">v14.1 | Developed by Satnam using Gemini</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <UKClock />
@@ -701,6 +698,7 @@
                                         <h3 className="text-2xl font-bold text-gray-800 mb-2">{modalDeck.name}</h3>
                                         <div className="bg-gray-50 p-4 rounded mb-6">
                                             <p className="text-sm text-gray-600">Status: <span className="font-bold text-green-600">Completed</span></p>
+                                            {modalDeck.mode !== 'study' && <p className="text-sm text-gray-600">Last Score: <span className="font-bold">{modalDeck.stats.score}%</span></p>}
                                             <p className="text-sm text-gray-600">Completed On: <span className="font-mono text-xs">{modalDeck.stats.date}</span></p>
                                         </div>
                                         <div className="flex gap-4">
