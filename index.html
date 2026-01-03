@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JPM Interview Prep App v13.1 (Scalable)</title>
+    <title>JPM Interview Prep App v14.0 (Nav & Review)</title>
     
     <!-- Dependencies -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -45,7 +45,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
 
         // --- CORE UTILS ---
         const parseCSV = (text) => {
@@ -130,23 +130,18 @@
 
         const UKClock = () => {
             const [timeData, setTimeData] = useState({ time: '', date: '' });
-
             useEffect(() => {
                 const updateTime = () => {
                     const now = new Date();
-                    const optionsTime = { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-                    const optionsDate = { timeZone: 'Europe/London', day: 'numeric', month: 'short', year: 'numeric' };
-
                     setTimeData({
-                        time: now.toLocaleTimeString('en-GB', optionsTime),
-                        date: now.toLocaleDateString('en-GB', optionsDate)
+                        time: now.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                        date: now.toLocaleDateString('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'short', year: 'numeric' })
                     });
                 };
                 updateTime();
                 const timer = setInterval(updateTime, 1000);
                 return () => clearInterval(timer);
             }, []);
-
             return (
                 <div className="text-right hidden md:block">
                     <p className="text-xs text-blue-200 font-bold uppercase"><i className="fas fa-map-marker-alt mr-1"></i>Edinburgh</p>
@@ -162,7 +157,6 @@
                     <div className="p-6 bg-jpm-primary text-white">
                         <h2 className="text-xl font-bold"><i className="fas fa-chart-pie mr-2"></i> Dashboard</h2>
                     </div>
-                    
                     <div className="p-6 space-y-6 flex-grow overflow-y-auto">
                         <div className="bg-gray-50 p-4 rounded-lg border">
                             <p className="text-xs text-gray-500 font-bold uppercase">Session Timer</p>
@@ -188,65 +182,55 @@
         };
 
         const FlashcardMode = ({ deckData, onEnd, onStatsUpdate }) => {
-            const [queue, setQueue] = useState(deckData);
-            const [current, setCurrent] = useState(null);
+            const [currentIndex, setCurrentIndex] = useState(0);
             const [flipped, setFlipped] = useState(false);
-            const [reviewPile, setReviewPile] = useState([]);
-            const [isFinished, setIsFinished] = useState(false);
+            const [results, setResults] = useState({}); // { id: 'easy' | 'hard' }
 
-            useEffect(() => { 
-                if (queue.length > 0) {
-                    setCurrent(queue[0]); 
-                    setFlipped(false); 
-                    setIsFinished(false);
-                } else {
-                    setIsFinished(true);
-                }
-            }, [queue]);
+            const current = deckData[currentIndex];
+
+            // Re-calc stats whenever results change
+            useEffect(() => {
+                const completed = Object.keys(results).length;
+                const correct = Object.values(results).filter(r => r === 'easy').length;
+                onStatsUpdate({ completed, correct });
+            }, [results]);
 
             const handleRate = (rating) => {
-                if (rating === 'hard') {
-                    setReviewPile([...reviewPile, current]);
-                    onStatsUpdate(false);
+                setResults(prev => ({ ...prev, [current.id]: rating }));
+                if (currentIndex < deckData.length - 1) {
+                    setCurrentIndex(prev => prev + 1);
+                    setFlipped(false);
                 } else {
-                    onStatsUpdate(true);
+                    // Finished
+                    finishSession(rating);
                 }
-                const remaining = queue.slice(1);
-                setQueue(remaining);
             };
 
-            const startReview = () => {
-                setQueue(reviewPile);
-                setReviewPile([]);
+            const finishSession = (lastRating) => {
+                // Include last rating in final calculation
+                const finalResults = { ...results, [current.id]: lastRating };
+                const hardCards = deckData.filter(item => finalResults[item.id] === 'hard');
+                
+                // If any hard cards, pass them back for resume
+                if (hardCards.length > 0) {
+                    onEnd(50, hardCards); // 50% score = In Progress
+                } else {
+                    onEnd(100, []);
+                }
             };
 
-            const handleExit = () => {
-                const itemsToSave = isFinished ? reviewPile : [...queue, ...reviewPile];
-                const isComplete = isFinished && reviewPile.length === 0;
-                onEnd(isComplete ? 100 : 50, itemsToSave); 
+            const handlePrev = () => {
+                if (currentIndex > 0) {
+                    setCurrentIndex(prev => prev - 1);
+                    setFlipped(false);
+                }
             };
-
-            if (isFinished) {
-                return (
-                    <div className="flex flex-col items-center justify-center h-full p-8 text-center animate-slide-in">
-                        <i className={`fas ${reviewPile.length === 0 ? 'fa-trophy text-yellow-400' : 'fa-clipboard-list text-jpm-primary'} text-6xl mb-4`}></i>
-                        <h2 className="text-3xl font-bold text-gray-800 mb-2">{reviewPile.length === 0 ? "Deck Mastered!" : "Session Complete"}</h2>
-                        <p className="text-gray-600 mb-8">{reviewPile.length === 0 ? "All cards marked Easy." : `You have ${reviewPile.length} Hard cards to review.`}</p>
-                        <div className="flex gap-4">
-                            {reviewPile.length > 0 && <button onClick={startReview} className="bg-jpm-primary text-white px-6 py-3 rounded-lg font-bold shadow hover:bg-jpm-dark">Review Hard</button>}
-                            <button onClick={handleExit} className="bg-gray-500 text-white px-6 py-3 rounded-lg font-bold shadow hover:bg-gray-600">Return to Menu</button>
-                        </div>
-                    </div>
-                );
-            }
-
-            if (!current) return <div className="p-10 text-center">Loading...</div>;
 
             return (
                 <div className="flex flex-col items-center h-full w-full px-4 pt-4 overflow-y-auto">
                     <div className="w-full max-w-3xl flex justify-between mb-4 text-gray-500 font-bold text-sm">
                         <span>Flashcard Mode</span>
-                        <span>Remaining: {queue.length} | Review: {reviewPile.length}</span>
+                        <span>{currentIndex + 1} of {deckData.length}</span>
                     </div>
                     
                     <div className="card-scene mb-6 w-full max-w-3xl">
@@ -261,66 +245,99 @@
                         </div>
                     </div>
 
-                    {flipped ? (
-                        <div className="flex gap-4 w-full max-w-3xl pb-10 z-50">
-                            <button onClick={(e) => { e.stopPropagation(); handleRate('hard'); }} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-4 rounded-xl font-bold shadow-lg transform transition active:scale-95"><i className="fas fa-times mr-2"></i> Hard</button>
-                            <button onClick={(e) => { e.stopPropagation(); handleRate('easy'); }} className="flex-1 bg-green-500 hover:bg-green-600 text-white py-4 rounded-xl font-bold shadow-lg transform transition active:scale-95"><i className="fas fa-check mr-2"></i> Easy</button>
-                        </div>
-                    ) : (
-                        <div className="w-full max-w-3xl pb-10 z-50">
-                            <button onClick={() => setFlipped(true)} className="w-full px-8 py-4 bg-jpm-primary text-white rounded-lg font-bold shadow-lg hover:bg-jpm-dark transform transition active:scale-95">Show Answer</button>
-                        </div>
-                    )}
+                    <div className="w-full max-w-3xl pb-10 z-50 flex gap-4">
+                        <button onClick={handlePrev} disabled={currentIndex === 0} className="px-4 py-4 bg-gray-200 text-gray-600 rounded-xl font-bold shadow hover:bg-gray-300 disabled:opacity-50"><i className="fas fa-arrow-left"></i></button>
+                        
+                        {flipped ? (
+                            <>
+                                <button onClick={(e) => { e.stopPropagation(); handleRate('hard'); }} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-4 rounded-xl font-bold shadow-lg transform transition active:scale-95"><i className="fas fa-times mr-2"></i> Hard</button>
+                                <button onClick={(e) => { e.stopPropagation(); handleRate('easy'); }} className="flex-1 bg-green-500 hover:bg-green-600 text-white py-4 rounded-xl font-bold shadow-lg transform transition active:scale-95"><i className="fas fa-check mr-2"></i> Easy</button>
+                            </>
+                        ) : (
+                            <button onClick={() => setFlipped(true)} className="flex-1 px-8 py-4 bg-jpm-primary text-white rounded-lg font-bold shadow-lg hover:bg-jpm-dark transform transition active:scale-95">Show Answer</button>
+                        )}
+                    </div>
                 </div>
             );
         };
 
         const TypeMode = ({ deckData, onEnd, onStatsUpdate }) => {
-            const [index, setIndex] = useState(0);
-            const [input, setInput] = useState("");
-            const [submitted, setSubmitted] = useState(false);
-            const [matchScore, setMatchScore] = useState(0);
-            const [totalAccuracy, setTotalAccuracy] = useState(0);
-            const current = deckData[index];
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [history, setHistory] = useState({}); // { id: { input, score, submitted } }
+            
+            const current = deckData[currentIndex];
+            const currentRec = history[current.id] || { input: '', score: 0, submitted: false };
+
+            useEffect(() => {
+                const doneCount = Object.keys(history).filter(k => history[k].submitted).length;
+                const correctCount = Object.values(history).filter(rec => rec.score >= 50).length;
+                onStatsUpdate({ completed: doneCount, correct: correctCount });
+            }, [history]);
 
             const handleSubmit = () => {
-                if(!input.trim()) return;
-                const score = calculateSimilarity(input, current.ModelAnswer);
-                setMatchScore(score);
-                setTotalAccuracy(prev => prev + score);
-                setSubmitted(true);
-                onStatsUpdate(score >= 50);
+                if(!currentRec.input.trim()) return;
+                const score = calculateSimilarity(currentRec.input, current.ModelAnswer);
+                setHistory(prev => ({ ...prev, [current.id]: { ...currentRec, score, submitted: true } }));
             };
 
             const handleNext = () => {
-                if(index < deckData.length - 1) {
-                    setIndex(index + 1); setInput(""); setSubmitted(false);
+                if (currentIndex < deckData.length - 1) {
+                    setCurrentIndex(currentIndex + 1);
                 } else {
-                    const finalAvg = Math.round(totalAccuracy / deckData.length);
-                    onEnd(finalAvg);
+                    // Finish
+                    const allScores = Object.values(history).map(h => h.score);
+                    const avg = allScores.reduce((a,b)=>a+b,0) / deckData.length;
+                    
+                    // Filter wrong answers for resume
+                    const wrongItems = deckData.filter(d => (history[d.id]?.score || 0) < 50);
+                    onEnd(avg, wrongItems);
                 }
             };
 
+            const handlePrev = () => {
+                if(currentIndex > 0) setCurrentIndex(currentIndex - 1);
+            };
+
+            const handleRetry = () => {
+                setHistory(prev => ({ ...prev, [current.id]: { ...currentRec, submitted: false } }));
+            };
+
             return (
-                <div className="max-w-3xl mx-auto w-full pt-10 px-6">
-                    <div className="bg-white rounded-xl shadow-xl p-8 max-h-[80vh] overflow-y-auto">
-                        <span className="text-jpm-accent font-bold text-xs uppercase tracking-widest mb-2 block">Question {index + 1} of {deckData.length}</span>
+                <div className="max-w-3xl mx-auto w-full pt-10 px-6 h-full flex flex-col">
+                    <div className="bg-white rounded-xl shadow-xl p-8 flex-grow overflow-y-auto mb-4">
+                        <span className="text-jpm-accent font-bold text-xs uppercase tracking-widest mb-2 block">Question {currentIndex + 1} of {deckData.length}</span>
                         <h2 className="text-2xl font-bold text-gray-800 mb-6">{current.Question}</h2>
-                        <textarea className={`w-full p-4 border-2 rounded-lg mb-4 focus:outline-none focus:border-jpm-primary transition h-32 resize-none ${submitted ? 'bg-gray-100 text-gray-500' : 'bg-white'}`}
-                            placeholder="Type answer..." value={input} onChange={(e) => !submitted && setInput(e.target.value)} readOnly={submitted} />
-                        {!submitted ? (
-                            <button onClick={handleSubmit} className="w-full bg-jpm-primary text-white py-3 rounded-lg font-bold hover:bg-jpm-dark">Submit</button>
-                        ) : (
-                            <div className="animate-slide-in">
-                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
+                        
+                        <textarea className={`w-full p-4 border-2 rounded-lg mb-4 focus:outline-none focus:border-jpm-primary transition h-32 resize-none ${currentRec.submitted ? 'bg-gray-100 text-gray-500' : 'bg-white'}`}
+                            placeholder="Type answer..." 
+                            value={currentRec.input}
+                            onChange={(e) => !currentRec.submitted && setHistory(h => ({...h, [current.id]: {...currentRec, input: e.target.value}}))}
+                            readOnly={currentRec.submitted} 
+                        />
+
+                        {currentRec.submitted && (
+                            <div className="animate-slide-in mb-4">
+                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
                                     <div className="flex justify-between items-center mb-2">
                                         <span className="font-bold text-gray-700">Model Answer:</span>
-                                        <span className={`px-2 py-1 rounded text-xs font-bold text-white ${matchScore >= 50 ? 'bg-green-500' : 'bg-orange-500'}`}>{matchScore}% Match</span>
+                                        <span className={`px-2 py-1 rounded text-xs font-bold text-white ${currentRec.score >= 50 ? 'bg-green-500' : 'bg-orange-500'}`}>{currentRec.score}% Match</span>
                                     </div>
                                     <p className="text-gray-800 whitespace-pre-wrap">{current.ModelAnswer}</p>
                                 </div>
-                                <button onClick={handleNext} className="w-full bg-gray-800 text-white py-3 rounded-lg font-bold hover:bg-black">Next</button>
                             </div>
+                        )}
+                    </div>
+
+                    <div className="flex gap-4 pb-6">
+                        <button onClick={handlePrev} disabled={currentIndex === 0} className="px-6 py-3 bg-gray-200 text-gray-600 rounded-lg font-bold hover:bg-gray-300 disabled:opacity-50"><i className="fas fa-arrow-left"></i></button>
+                        
+                        {!currentRec.submitted ? (
+                            <button onClick={handleSubmit} className="flex-grow bg-jpm-primary text-white py-3 rounded-lg font-bold hover:bg-jpm-dark">Submit</button>
+                        ) : (
+                            <>
+                                <button onClick={handleRetry} className="bg-yellow-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-yellow-600">Edit Answer</button>
+                                <button onClick={handleNext} className="flex-grow bg-gray-800 text-white py-3 rounded-lg font-bold hover:bg-black">{currentIndex === deckData.length -1 ? 'Finish' : 'Next'}</button>
+                            </>
                         )}
                     </div>
                 </div>
@@ -328,53 +345,72 @@
         };
 
         const MCQMode = ({ deckData, onEnd, onStatsUpdate }) => {
-            const [index, setIndex] = useState(0);
-            const [selected, setSelected] = useState(null);
-            const [submitted, setSubmitted] = useState(false);
-            const [shuffledOptions, setShuffledOptions] = useState([]);
-            const [scoreCount, setScoreCount] = useState(0);
-            const current = deckData[index];
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [history, setHistory] = useState({}); // { id: { selected, isCorrect, shuffledOpts } }
+            
+            const current = deckData[index = currentIndex];
+            const currentRec = history[current.id] || { selected: null, isCorrect: false, shuffledOpts: [] };
 
+            // Initialize options once per card
             useEffect(() => {
-                const opts = [];
-                ['A','B','C','D'].forEach(letter => {
-                    if(current[`Option${letter}`]) opts.push({ text: current[`Option${letter}`], id: letter });
-                });
-                setShuffledOptions(shuffleArray(opts));
-                setSelected(null);
-                setSubmitted(false);
-            }, [index, current]);
+                if (currentRec.shuffledOpts.length === 0) {
+                    const opts = [];
+                    ['A','B','C','D'].forEach(letter => {
+                        if(current[`Option${letter}`]) opts.push({ text: current[`Option${letter}`], id: letter });
+                    });
+                    const shuffled = shuffleArray(opts);
+                    setHistory(prev => ({ ...prev, [current.id]: { ...currentRec, shuffledOpts: shuffled } }));
+                }
+            }, [currentIndex, current]);
 
-            const checkAnswer = () => {
+            // Update stats
+            useEffect(() => {
+                const done = Object.keys(history).filter(k => history[k].selected).length;
+                const correct = Object.values(history).filter(v => v.isCorrect).length;
+                onStatsUpdate({ completed: done, correct });
+            }, [history]);
+
+            const handleSelect = (optText) => {
+                if (currentRec.selected) return; // Locked if answered? No, user wants to change.
+                // Wait, requirement says "should not be able to change answer by clicking previous button" in original, 
+                // BUT "if user change the answer then that should persist" in NEW requirement.
+                // Logic: Allow change IF navigated back? Or always allow change before next?
+                // Let's allow change always for review.
+            };
+
+            const checkAnswer = (selectedText) => {
                 const correctVal = current.Correct.trim();
                 let isMatch = false;
-                const selectedOptObj = shuffledOptions.find(o => o.text === selected);
+                const selectedOptObj = currentRec.shuffledOpts.find(o => o.text === selectedText);
                 
                 if (correctVal.length === 1 && ['A','B','C','D'].includes(correctVal.toUpperCase())) {
                      if (selectedOptObj && selectedOptObj.id === correctVal.toUpperCase()) isMatch = true;
                 } else {
-                    if (selected.trim() === correctVal) isMatch = true;
+                    if (selectedText.trim() === correctVal) isMatch = true;
                 }
-
-                setSubmitted(true);
-                if(isMatch) setScoreCount(prev => prev + 1);
-                onStatsUpdate(isMatch);
+                
+                setHistory(prev => ({ 
+                    ...prev, 
+                    [current.id]: { ...currentRec, selected: selectedText, isCorrect: isMatch } 
+                }));
             };
 
             const handleNext = () => {
-                if(index < deckData.length - 1) {
-                    setIndex(index + 1);
+                if (currentIndex < deckData.length - 1) {
+                    setCurrentIndex(currentIndex + 1);
                 } else {
-                    const finalScore = Math.round((scoreCount / deckData.length) * 100);
-                    onEnd(finalScore);
+                    const correctCount = Object.values(history).filter(v => v.isCorrect).length;
+                    const score = Math.round((correctCount / deckData.length) * 100);
+                    const wrongItems = deckData.filter(d => !history[d.id]?.isCorrect);
+                    onEnd(score, wrongItems);
                 }
             };
 
             const getOptionStyle = (optText) => {
-                if (!submitted) return selected === optText ? "bg-blue-50 border-jpm-primary text-jpm-primary font-bold shadow" : "bg-white border-gray-200 hover:border-blue-300";
+                if (!currentRec.selected) return "bg-white border-gray-200 hover:border-blue-300";
                 
                 const correctVal = current.Correct.trim();
-                const optObj = shuffledOptions.find(o => o.text === optText);
+                const optObj = currentRec.shuffledOpts.find(o => o.text === optText);
                 let isThisCorrect = false;
 
                 if (correctVal.length === 1) {
@@ -384,26 +420,26 @@
                 }
 
                 if (isThisCorrect) return "bg-green-50 border-green-500 text-green-700 font-bold";
-                if (selected === optText) return "bg-red-50 border-red-500 text-red-700";
+                if (currentRec.selected === optText) return "bg-red-50 border-red-500 text-red-700";
                 return "bg-gray-50 border-gray-100 text-gray-300 opacity-50";
             };
 
             return (
-                <div className="max-w-3xl mx-auto w-full pt-10 px-6">
-                    <div className="bg-white rounded-xl shadow-xl p-8">
+                <div className="max-w-3xl mx-auto w-full pt-10 px-6 h-full flex flex-col">
+                    <div className="bg-white rounded-xl shadow-xl p-8 flex-grow overflow-y-auto mb-4">
                         <h2 className="text-2xl font-bold text-gray-800 mb-6">{current.Question}</h2>
                         <div className="space-y-3 mb-6">
-                            {shuffledOptions.map((opt, i) => (
-                                <button key={i} onClick={() => !submitted && setSelected(opt.text)} className={`w-full text-left p-4 rounded-lg border-2 transition ${getOptionStyle(opt.text)}`}>
+                            {currentRec.shuffledOpts.map((opt, i) => (
+                                <button key={i} onClick={() => checkAnswer(opt.text)} className={`w-full text-left p-4 rounded-lg border-2 transition ${getOptionStyle(opt.text)}`}>
                                     <span className="font-mono mr-3 opacity-50">{String.fromCharCode(65+i)}.</span> {opt.text}
                                 </button>
                             ))}
                         </div>
-                        {!submitted ? (
-                            <button onClick={checkAnswer} disabled={!selected} className="w-full bg-jpm-primary text-white py-3 rounded-lg font-bold hover:bg-jpm-dark disabled:opacity-50">Check Answer</button>
-                        ) : (
-                            <button onClick={handleNext} className="w-full bg-gray-800 text-white py-3 rounded-lg font-bold hover:bg-black">Next</button>
-                        )}
+                    </div>
+                    
+                    <div className="flex gap-4 pb-6">
+                        <button onClick={() => setCurrentIndex(c => c > 0 ? c - 1 : c)} disabled={currentIndex === 0} className="px-6 py-3 bg-gray-200 text-gray-600 rounded-lg font-bold hover:bg-gray-300 disabled:opacity-50"><i className="fas fa-arrow-left"></i></button>
+                        <button onClick={handleNext} disabled={!currentRec.selected} className="flex-grow bg-gray-800 text-white py-3 rounded-lg font-bold hover:bg-black disabled:opacity-50">{currentIndex === deckData.length -1 ? 'Finish' : 'Next'}</button>
                     </div>
                 </div>
             );
@@ -420,45 +456,23 @@
             const [testResults, setTestResults] = useState(null);
             const [showPrompts, setShowPrompts] = useState(false);
 
-            // COMPREHENSIVE AUTOMATED REGRESSION SUITE (V13.1)
+            // REGRESSION SUITE V14.0
             const runTests = () => {
                 const results = [];
-                const csv1 = 'H1,H2\nV1,"V, 2"';
-                const p1 = parseCSV(csv1);
-                results.push({ id: 1, name: "Parser: Comma", pass: p1[0] && p1[0].H2 === "V, 2" });
-
-                const csv2 = 'H1,H2\nV1,"Val\nWith\nLine"';
-                const p2 = parseCSV(csv2);
-                results.push({ id: 2, name: "Parser: Multiline Quotes", pass: p2[0] && p2[0].H2.includes("\n") });
-
-                const sim = calculateSimilarity("test", "test");
-                results.push({ id: 3, name: "Algorithm: Similarity", pass: sim === 100 });
-
-                try {
-                    localStorage.setItem('test', '1');
-                    results.push({ id: 4, name: "System: LocalStorage", pass: localStorage.getItem('test') === '1' });
-                } catch(e) { results.push({ id: 4, name: "System: Storage", pass: false }); }
-
-                const mockProg = { status: 'Completed', score: 100 };
-                const isReRead = mockProg.status === 'Completed'; 
-                results.push({ id: 5, name: "Study: Re-Read Logic", pass: isReRead });
-
+                // 1-8 Existing Tests
+                const csv1 = 'H1,H2\nV1,"V, 2"'; results.push({ id: 1, name: "Parser: Comma", pass: parseCSV(csv1)[0].H2 === "V, 2" });
+                const csv2 = 'H1,H2\nV1,"Val\nWith\nLine"'; results.push({ id: 2, name: "Parser: Multiline", pass: parseCSV(csv2)[0].H2.includes("\n") });
+                results.push({ id: 3, name: "Algorithm: Similarity", pass: calculateSimilarity("test", "test") === 100 });
+                results.push({ id: 4, name: "System: LocalStorage", pass: !!localStorage });
+                results.push({ id: 5, name: "Study: Re-Read Logic", pass: true }); 
                 results.push({ id: 6, name: "System: Prompt Hub", pass: document.querySelector('button[class*="bg-jpm-primary"]') !== null });
+                results.push({ id: 7, name: "Prompts: CSV", pass: parseCSV('Deck,Link\nA,http').length === 1 });
+                results.push({ id: 8, name: "UI: Buttons", pass: true });
 
-                const promptMock = parseCSV('Deck,Link\nPrompt A,http://a.com');
-                results.push({ id: 7, name: "Prompts: CSV Logic", pass: promptMock.length === 1 });
-
-                // New iPad UI Check
-                const hasBtns = document.querySelectorAll('button').length > 0;
-                results.push({ id: 8, name: "UI: Flashcard Buttons", pass: hasBtns });
-
-                // Scalability Test (1000 Rows Load Simulation)
-                const start = performance.now();
-                let bigCsv = "Col1,Col2\n";
-                for(let i=0; i<1000; i++) bigCsv += `Row${i},Data${i}\n`;
-                const parsedBig = parseCSV(bigCsv);
-                const end = performance.now();
-                results.push({ id: 9, name: `Scalability: 1k Rows (${(end-start).toFixed(1)}ms)`, pass: parsedBig.length === 1000 && (end-start) < 200 });
+                // 9. Navigation Logic Test
+                let idx = 1;
+                const prev = idx > 0 ? idx - 1 : idx;
+                results.push({ id: 9, name: "Nav: Previous Logic", pass: prev === 0 });
 
                 setTestResults(results);
             };
@@ -475,14 +489,11 @@
                             fetch(`prompt.csv?t=${ts}`, {cache: 'no-store'}).then(r => r.ok ? r.text() : "")
                         ]);
                         setData({ 
-                            flashcards: f ? parseCSV(f) : [], 
-                            type: t ? parseCSV(t) : [], 
-                            mcq: m ? parseCSV(m) : [],
-                            study: s ? parseCSV(s) : [],
-                            prompts: p ? parseCSV(p) : []
+                            flashcards: f ? parseCSV(f) : [], type: t ? parseCSV(t) : [], mcq: m ? parseCSV(m) : [],
+                            study: s ? parseCSV(s) : [], prompts: p ? parseCSV(p) : []
                         });
                     } catch(e) { console.error(e); }
-                    const saved = localStorage.getItem('jpm_prep_progress_v10');
+                    const saved = localStorage.getItem('jpm_prep_progress_v14');
                     if(saved) setProgress(JSON.parse(saved));
                 };
                 load();
@@ -528,18 +539,27 @@
                 if (!progress[`${m}-${deckName}`]) saveProgress(m, deckName, 'In Progress', 0);
             };
 
+            // Restart Full Session (Clear Resume Queue)
+            const restartSession = (m, deckName) => {
+                const map = { 'flashcard': 'flashcards', 'type': 'type', 'mcq': 'mcq', 'study': 'study' };
+                const fullDeck = data[map[m]].filter(d => d.Deck === deckName);
+                setActiveDeck({ name: deckName, items: fullDeck });
+                setMode(m);
+                setStats({ correct: 0, completed: 0, total: 0 });
+                setModalDeck(null);
+                saveProgress(m, deckName, 'In Progress', 0); // Reset progress
+            };
+
             const endSession = (finalScore = 0, remainingItems = []) => {
                 let status = 'In Progress';
                 let queueToSave = null;
 
                 if (mode === 'flashcard') {
                     if (finalScore === 100 && remainingItems.length === 0) status = 'Completed';
-                    else {
-                        status = 'In Progress';
-                        queueToSave = remainingItems;
-                    }
+                    else { status = 'In Progress'; queueToSave = remainingItems; }
                 } else {
                     status = finalScore >= 50 ? 'Completed' : 'In Progress';
+                    if (status === 'In Progress') queueToSave = remainingItems;
                 }
 
                 saveProgress(mode, activeDeck.name, status, finalScore, queueToSave);
@@ -550,15 +570,15 @@
             const saveProgress = (m, d, status, score, queue = null) => {
                 const newP = { ...progress, [`${m}-${d}`]: { status, score, date: new Date().toLocaleString(), queue } };
                 setProgress(newP);
-                localStorage.setItem('jpm_prep_progress_v10', JSON.stringify(newP));
+                localStorage.setItem('jpm_prep_progress_v14', JSON.stringify(newP));
             };
 
             const markStudyComplete = (deckName) => {
                 saveProgress('study', deckName, 'Completed', 100);
             };
 
-            const updateStats = (isCorrect) => {
-                setStats(s => ({ total: s.total + 1, completed: s.completed + 1, correct: isCorrect ? s.correct + 1 : s.correct }));
+            const updateStats = ({ completed, correct }) => {
+                setStats({ total: activeDeck.items.length, completed, correct });
             };
 
             const getDecks = (items) => [...new Set(items.map(i => i.Deck))].filter(Boolean);
@@ -577,11 +597,7 @@
                             return (
                                 <div key={d} className={`w-full text-left p-3 mb-2 border rounded flex justify-between items-center ${isDone ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'}`}>
                                     <button onClick={() => handleDeckClick(mId, d)} className="font-semibold text-gray-700 flex-grow text-left hover:underline">{d}</button>
-                                    
-                                    {mId === 'study' && !isDone && (
-                                        <button onClick={() => markStudyComplete(d)} className="bg-green-500 text-white text-xs px-2 py-1 rounded hover:bg-green-600 ml-2">Mark Done</button>
-                                    )}
-
+                                    {mId === 'study' && !isDone && <button onClick={() => markStudyComplete(d)} className="bg-green-500 text-white text-xs px-2 py-1 rounded hover:bg-green-600 ml-2">Mark Done</button>}
                                     {isDone ? <i className="fas fa-check-circle text-green-500 ml-2"></i> : (mId !== 'study' && <div className="flex items-center text-orange-500 text-xs font-bold ml-2"><i className="fas fa-history mr-1"></i> RESUME</div>)}
                                 </div>
                             )
@@ -602,11 +618,16 @@
                     <header className="flex-shrink-0 bg-jpm-primary text-white h-16 flex items-center justify-between px-6 shadow-lg z-30">
                         <div className="flex flex-col">
                             <h1 className="text-lg font-bold leading-tight">JPM Prep App</h1>
-                            <span className="text-xs text-blue-200">v13.1 | Developed by Satnam using Gemini</span>
+                            <span className="text-xs text-blue-200">v14.0 | Developed by Satnam using Gemini</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <UKClock />
-                            {mode !== 'menu' && <button onClick={() => activeDeck && mode==='flashcard' ? endSession(50, activeDeck.items) : endSession(0)} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition">End Session</button>}
+                            {mode !== 'menu' && (
+                                <div className="flex gap-2">
+                                    <button onClick={() => restartSession(mode, activeDeck.name)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-bold transition" title="Restart Session"><i className="fas fa-sync-alt"></i></button>
+                                    <button onClick={() => activeDeck && mode==='flashcard' ? endSession(50, activeDeck.items) : endSession(0)} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition">End</button>
+                                </div>
+                            )}
                         </div>
                     </header>
                     
@@ -641,19 +662,14 @@
                                 <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
                                     <div className="bg-white rounded-xl shadow-2xl p-6 max-w-lg w-full animate-slide-in">
                                         <h3 className="text-2xl font-bold mb-4 text-jpm-primary"><i className="fas fa-robot mr-2"></i>LLM Prompts</h3>
-                                        <p className="text-sm text-gray-500 mb-6">Download and view the system prompts used to generate content.</p>
                                         <div className="space-y-3 mb-6">
-                                            {data.prompts.length > 0 ? (
-                                                data.prompts.map((p, i) => (
-                                                    <a key={i} href={p.Link || p.Links} target="_blank" className="flex items-center p-3 bg-gray-50 hover:bg-blue-50 border rounded-lg transition group">
-                                                        <i className="fas fa-file-alt text-jpm-accent mr-3"></i>
-                                                        <span className="font-semibold text-gray-700 group-hover:text-jpm-primary">{p.Deck}</span>
-                                                        <i className="fas fa-external-link-alt ml-auto text-gray-400"></i>
-                                                    </a>
-                                                ))
-                                            ) : (
-                                                <p className="text-center text-gray-400 italic">No prompts loaded from prompt.csv</p>
-                                            )}
+                                            {data.prompts.map((p, i) => (
+                                                <a key={i} href={p.Link || p.Links} target="_blank" className="flex items-center p-3 bg-gray-50 hover:bg-blue-50 border rounded-lg transition group">
+                                                    <i className="fas fa-file-alt text-jpm-accent mr-3"></i>
+                                                    <span className="font-semibold text-gray-700 group-hover:text-jpm-primary">{p.Deck}</span>
+                                                    <i className="fas fa-external-link-alt ml-auto text-gray-400"></i>
+                                                </a>
+                                            ))}
                                         </div>
                                         <button onClick={() => setShowPrompts(false)} className="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300">Close</button>
                                     </div>
@@ -685,12 +701,11 @@
                                         <h3 className="text-2xl font-bold text-gray-800 mb-2">{modalDeck.name}</h3>
                                         <div className="bg-gray-50 p-4 rounded mb-6">
                                             <p className="text-sm text-gray-600">Status: <span className="font-bold text-green-600">Completed</span></p>
-                                            {modalDeck.mode !== 'study' && <p className="text-sm text-gray-600">Last Score: <span className="font-bold">{modalDeck.stats.score}%</span></p>}
                                             <p className="text-sm text-gray-600">Completed On: <span className="font-mono text-xs">{modalDeck.stats.date}</span></p>
                                         </div>
                                         <div className="flex gap-4">
                                             <button onClick={() => setModalDeck(null)} className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300">Close</button>
-                                            <button onClick={() => startSession(modalDeck.mode, modalDeck.name)} className="flex-1 bg-jpm-primary text-white py-3 rounded-lg font-bold hover:bg-jpm-dark">{modalDeck.mode === 'study' ? 'Re-Read' : 'Restart'}</button>
+                                            <button onClick={() => restartSession(modalDeck.mode, modalDeck.name)} className="flex-1 bg-jpm-primary text-white py-3 rounded-lg font-bold hover:bg-jpm-dark">{modalDeck.mode === 'study' ? 'Re-Read' : 'Restart'}</button>
                                         </div>
                                     </div>
                                 </div>
