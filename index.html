@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JPM Prep v20.15 (Algo + Timer Fix)</title>
+    <title>JPM Prep v20.17 (Sandboxed)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -39,17 +39,7 @@
         .card-face { position: absolute; height: 100%; width: 100%; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 1rem; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         
         /* Fixed Scrollbar Gutter */
-        .card-content { 
-            flex-grow: 1; 
-            overflow-y: scroll; 
-            padding: 2rem; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-            align-items: center; 
-            text-align: center;
-        }
-        
+        .card-content { flex-grow: 1; overflow-y: scroll; padding: 2rem; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
         .card-content::-webkit-scrollbar { width: 8px; }
         .card-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
         .card-content::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 4px; }
@@ -58,10 +48,8 @@
 
         .card-face.front { background: white; border: 2px solid #e5e7eb; transform: rotateY(0deg); }
         .dark .card-face.front { background: #1f2937; border-color: #374151; }
-        
         .card-face.back { background: #f0fdf4; border: 2px solid #86efac; transform: rotateY(180deg); }
         .dark .card-face.back { background: #064e3b; border-color: #059669; }
-        
         .is-flipped { transform: rotateY(180deg); }
         
         .slide-in { animation: slideIn 0.3s ease-out forwards; }
@@ -77,7 +65,9 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-        // --- 1. CORE UTILS ---
+        // --- 1. CORE UTILS (ISOLATED LOGIC) ---
+        
+        // CSV Parser: Strict & Robust
         const parseCSV = (text) => {
             if (!text || typeof text !== 'string') return [];
             if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); 
@@ -129,42 +119,72 @@
             }).filter(Boolean);
         };
 
-        // FIXED: Levenshtein Distance for Smart Typo Detection
-        const calculateSimilarity = (s1, s2) => {
-            if (!s1 || !s2) return 0;
-            const a = s1.toLowerCase().trim(), b = s2.toLowerCase().trim();
-            if (a.length === 0) return 0;
-            if (a === b) return 100;
-
+        // NEW: Levenshtein Helper for individual words (Local Scope)
+        const getWordDistance = (s1, s2) => {
+            const a = s1.toLowerCase(), b = s2.toLowerCase();
             const matrix = [];
-            // Increment along the first column of each row
-            for (let i = 0; i <= b.length; i++) {
-                matrix[i] = [i];
-            }
-            // Increment each column in the first row
-            for (let j = 0; j <= a.length; j++) {
-                matrix[0][j] = j;
-            }
-
-            // Fill in the rest of the matrix
-            for (let i = 1; i <= b.length; i++) {
-                for (let j = 1; j <= a.length; j++) {
-                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
-                        matrix[i][j] = matrix[i - 1][j - 1];
-                    } else {
-                        matrix[i][j] = Math.min(
-                            matrix[i - 1][j - 1] + 1, // substitution
-                            Math.min(
-                                matrix[i][j - 1] + 1, // insertion
-                                matrix[i - 1][j] + 1  // deletion
-                            )
-                        );
-                    }
+            for(let i=0; i<=b.length; i++) matrix[i] = [i];
+            for(let j=0; j<=a.length; j++) matrix[0][j] = j;
+            for(let i=1; i<=b.length; i++){
+                for(let j=1; j<=a.length; j++){
+                    if(b.charAt(i-1) == a.charAt(j-1)) matrix[i][j] = matrix[i-1][j-1];
+                    else matrix[i][j] = Math.min(matrix[i-1][j-1]+1, Math.min(matrix[i][j-1]+1, matrix[i-1][j]+1));
                 }
             }
-            const distance = matrix[b.length][a.length];
-            const maxLength = Math.max(a.length, b.length);
-            return Math.round((1 - distance / maxLength) * 100);
+            return matrix[b.length][a.length];
+        };
+
+        // NEW: Smart Context Algorithm (Bag of Words)
+        // Returns 0 for gibberish, >80 for close concepts
+        const calculateSmartScore = (user, model) => {
+            if (!user || !model) return 0;
+            
+            // 1. Tokenize (Split into words, remove punctuation)
+            const clean = (text) => text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 1); 
+            const userTokens = clean(user);
+            const modelTokens = clean(model);
+            
+            if (userTokens.length === 0) return 0;
+            
+            let matchedKeywords = 0;
+            const modelUsed = new Set(); 
+
+            // 2. Iterate User Words to find matches in Model
+            userTokens.forEach(uWord => {
+                let bestMatchIdx = -1;
+                let bestMatchScore = 0;
+
+                modelTokens.forEach((mWord, idx) => {
+                    if (modelUsed.has(idx)) return; 
+
+                    // Exact Match
+                    if (uWord === mWord) {
+                        bestMatchScore = 1;
+                        bestMatchIdx = idx;
+                    } 
+                    // Fuzzy Match (Typo tolerance per word)
+                    else {
+                        const dist = getWordDistance(uWord, mWord);
+                        const len = Math.max(uWord.length, mWord.length);
+                        // Allow 1 error for short words, 2 for long
+                        const allowed = len > 5 ? 2 : 1;
+                        if (dist <= allowed) {
+                            bestMatchScore = 0.9; 
+                            if(bestMatchIdx === -1) bestMatchIdx = idx;
+                        }
+                    }
+                });
+
+                if (bestMatchIdx !== -1) {
+                    matchedKeywords += bestMatchScore;
+                    modelUsed.add(bestMatchIdx);
+                }
+            });
+
+            // 3. Calculate Score
+            const meaningful = Math.max(1, modelTokens.length);
+            let score = (matchedKeywords / meaningful) * 100;
+            return Math.min(100, Math.round(score));
         };
 
         const shuffleArray = (array) => {
@@ -176,7 +196,48 @@
             return arr;
         };
 
-        // --- 2. UI COMPONENTS ---
+        // --- 2. ISOLATION COMPONENTS (SANDBOXING) ---
+
+        // Global App Crash Handler
+        class GlobalErrorBoundary extends React.Component {
+            constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+            static getDerivedStateFromError(error) { return { hasError: true, error }; }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="flex flex-col items-center justify-center h-screen bg-red-50 p-6 text-center">
+                            <h2 className="text-2xl font-bold text-red-600 mb-4">Critical System Error</h2>
+                            <div className="bg-white p-4 rounded border border-red-200 text-left text-xs font-mono text-red-800 mb-6 overflow-auto max-h-64 w-full max-w-lg">
+                                {this.state.error?.toString()}
+                            </div>
+                            <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-red-600 text-white px-6 py-3 rounded-lg font-bold">Factory Reset</button>
+                        </div>
+                    );
+                }
+                return this.props.children; 
+            }
+        }
+
+        // Local Component Sandbox (Isolates Mode Crashes)
+        class ComponentSandbox extends React.Component {
+            constructor(props) { super(props); this.state = { hasError: false }; }
+            static getDerivedStateFromError(error) { return { hasError: true }; }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center">
+                            <i className="fas fa-bug text-4xl text-orange-500 mb-4"></i>
+                            <h3 className="text-xl font-bold text-gray-800 dark:text-white">This Mode Encountered an Error</h3>
+                            <p className="text-gray-600 dark:text-gray-400 mb-6">Only this section crashed. The rest of the app is safe.</p>
+                            <button onClick={() => window.location.reload()} className="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded font-bold">Reload App</button>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
+        // --- 3. UI COMPONENTS ---
 
         const UKClock = () => {
             const [timeData, setTimeData] = useState({ time: '', date: '' });
@@ -251,7 +312,7 @@
             );
         };
 
-        // --- 3. GAME ENGINES (Fixed Timer Logic) ---
+        // --- 3. GAME ENGINES (SANDBOXED & OPTIMIZED) ---
 
         const FlashcardMode = ({ deckData, onEnd, onStatsUpdate, pressureMode }) => {
             const [currentIndex, setCurrentIndex] = useState(0);
@@ -264,12 +325,10 @@
             const current = deckData[currentIndex];
             const currentRating = results[current.id];
 
-            // Reset Timer Effect
             useEffect(() => {
                 if(pressureMode) setTimeLeft(60);
             }, [currentIndex, pressureMode]);
 
-            // Tick Timer Effect
             useEffect(() => {
                 if (!pressureMode || flipped) return; 
                 const timer = setInterval(() => {
@@ -376,37 +435,34 @@
             const [currentIndex, setCurrentIndex] = useState(0);
             const [history, setHistory] = useState({}); 
             const [timeLeft, setTimeLeft] = useState(60);
-            const inputRef = useRef(""); // FIXED: Use ref to track input without re-rendering timer
+            const inputRef = useRef(""); 
             
             if (!deckData || deckData.length === 0) return <div>No data.</div>;
             const current = deckData[currentIndex];
             const currentRec = history[current.id] || { input: '', score: 0, submitted: false };
 
-            // Update ref when input changes
             useEffect(() => {
                 inputRef.current = currentRec.input || "";
             }, [currentRec.input]);
 
-            // Submit logic used by button AND timer
+            // UPDATED: Using Smart Context Scoring
             const finalizeSubmission = useCallback((finalInput) => {
-                const score = calculateSimilarity(finalInput, current.ModelAnswer);
+                const score = calculateSmartScore(finalInput, current.ModelAnswer);
                 setHistory(prev => ({ ...prev, [current.id]: { input: finalInput, score, submitted: true } }));
             }, [current]);
 
-            // Reset timer ONLY when index changes
             useEffect(() => {
                 if(pressureMode) setTimeLeft(60);
                 inputRef.current = history[current.id]?.input || "";
             }, [currentIndex, pressureMode, current.id, history]);
 
-            // Timer Logic - Indepedent of Keystrokes
             useEffect(() => {
                 if (!pressureMode || currentRec.submitted) return;
                 const timer = setInterval(() => {
                     setTimeLeft(prev => {
                         if (prev <= 1) {
                             clearInterval(timer);
-                            finalizeSubmission(inputRef.current); // Auto submit current ref value
+                            finalizeSubmission(inputRef.current); 
                             return 0;
                         }
                         return prev - 1;
@@ -511,12 +567,10 @@
                 setHistory(prev => ({ ...prev, [current.id]: { ...currentRec, selected: selectedText, isCorrect: isMatch } }));
             }, [current, currentRec]);
 
-            // Reset Timer
             useEffect(() => {
                 if(pressureMode) setTimeLeft(60);
             }, [currentIndex, pressureMode]);
 
-            // Tick Timer
             useEffect(() => {
                 if (!pressureMode || currentRec.selected) return;
                 const timer = setInterval(() => {
@@ -637,7 +691,7 @@
             const [streak, setStreak] = useState(0);
             const [pressureMode, setPressureMode] = useState(false);
 
-            // --- 4. REGRESSION SUITE V20.15 (38 TESTS) ---
+            // --- 4. REGRESSION SUITE V20.17 (38 TESTS) ---
             const runTests = () => {
                 const results = [];
                 // FIXED TEST DATA
@@ -652,8 +706,8 @@
                 results.push({ id: 2, name: "Data: Multiline", pass: parseCSV('Deck,H1\nTest,"L\nB"')[0].H1.includes("\n") });
                 results.push({ id: 3, name: "Data: Pipe", pass: parseCSV('Deck|H2\nTest|V2')[0].H2 === "V2" });
                 
-                // FIXED: Smart Typo Test (Levenshtein)
-                results.push({ id: 4, name: "Algo: Smart Typo", pass: calculateSimilarity("polimorphism", "polymorphism") > 80 });
+                // UPDATED: Now testing smart context instead of just similarity
+                results.push({ id: 4, name: "Algo: Smart Typo", pass: calculateSmartScore("polimorphism", "polymorphism") > 80 });
                 results.push({ id: 5, name: "Algo: Shuffle", pass: shuffleArray([1,2,3]).length === 3 });
                 results.push({ id: 6, name: "Sys: Storage", pass: !!localStorage });
                 results.push({ id: 7, name: "UI: Prompt Hub", pass: !!document.querySelector('button[class*="bg-jpm-primary"]') });
@@ -697,8 +751,8 @@
                 results.push({ id: 29, name: "UI: Vertical Safety", pass: !!menuContainer });
                 results.push({ id: 30, name: "UI: Grid Consistency", pass: document.querySelector('.grid').children.length > 0 });
 
-                // FIXED: Gibberish Test (Returns 0 now)
-                results.push({ id: 31, name: "Algo: Gibberish Check", pass: calculateSimilarity("ksdjfklsd", "polymorphism") === 0 });
+                // UPDATED: Gibberish Test now passes because of Token matching
+                results.push({ id: 31, name: "Algo: Gibberish Check", pass: calculateSmartScore("jsdfjsdkfk", "polymorphism is object oriented") === 0 });
                 const mainEl = document.querySelector('main');
                 const hasSafePadding = mainEl && (mainEl.classList.contains('pb-safe') || mainEl.classList.contains('pb-40'));
                 results.push({ id: 33, name: "UI: Safe Padding", pass: hasSafePadding });
@@ -930,11 +984,12 @@
             };
 
             return (
+                <GlobalErrorBoundary>
                 <div className="flex flex-col h-dvh bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
                     <header className="flex-shrink-0 bg-jpm-primary dark:bg-gray-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-30">
                         <div className="flex flex-col">
                             <h1 className="text-lg font-bold leading-tight">JPM Prep App</h1>
-                            <span className="text-xs text-blue-200">v20.15 (Algo + Timer Fix)</span>
+                            <span className="text-xs text-blue-200">v20.17 (Sandboxed)</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <UKClock />
@@ -1068,12 +1123,25 @@
                                 </div>
                             )}
 
-                            {(mode === 'flashcard' || mode === 'vocab') && activeDeck && <FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} />}
-                            {mode === 'type' && activeDeck && <TypeMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} />}
-                            {mode === 'mcq' && activeDeck && <MCQMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} />}
+                            {(mode === 'flashcard' || mode === 'vocab') && activeDeck && (
+                                <ComponentSandbox>
+                                    <FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} />
+                                </ComponentSandbox>
+                            )}
+                            {(mode === 'type') && activeDeck && (
+                                <ComponentSandbox>
+                                    <TypeMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} />
+                                </ComponentSandbox>
+                            )}
+                            {(mode === 'mcq') && activeDeck && (
+                                <ComponentSandbox>
+                                    <MCQMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} />
+                                </ComponentSandbox>
+                            )}
                         </main>
                     </div>
                 </div>
+                </GlobalErrorBoundary>
             );
         };
 
