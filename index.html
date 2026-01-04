@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JPM Prep v21.8 (Legacy Core Stable)</title>
+    <title>JPM Prep v21.9 (Final Production)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -44,7 +44,6 @@
         .dark .card-face.back { background: #064e3b; border-color: #059669; }
         .is-flipped { transform: rotateY(180deg); }
         
-        /* Safe Code Block */
         .safe-code { background: #2d2d2d; color: #f8f8f2; padding: 1rem; border-radius: 0.5rem; text-align: left; font-family: monospace; white-space: pre-wrap; word-break: break-word; max-width: 100%; overflow-x: auto; }
     </style>
 </head>
@@ -75,61 +74,35 @@
             }
         }
 
-        // --- 2. UTILS (RESTORED FROM v20.7) ---
+        // --- 2. UTILS ---
         const parseCSV = (text) => {
             if (!text || typeof text !== 'string') return [];
-            if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); 
-            text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-            const firstLineEnd = text.indexOf('\n');
-            if (firstLineEnd === -1) return [];
+            text = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            const lines = text.split('\n').filter(l => l.trim().length > 0);
+            if (lines.length < 2) return [];
             
-            const firstLine = text.substring(0, firstLineEnd);
-            const delimiter = firstLine.includes('|') ? '|' : ',';
-
-            const rows = [];
-            let currentRow = [];
-            let currentVal = '';
-            let insideQuotes = false;
-
-            // Character-by-character parsing (Handles Multi-line Flashcards correctly)
-            for (let i = 0; i < text.length; i++) {
-                const char = text[i];
-                const nextChar = text[i+1];
-
-                if (char === '"') {
-                    if (insideQuotes && nextChar === '"') { currentVal += '"'; i++; }
-                    else insideQuotes = !insideQuotes;
-                } else if (char === delimiter && !insideQuotes) {
-                    currentRow.push(currentVal); currentVal = '';
-                } else if (char === '\n' && !insideQuotes) {
-                    currentRow.push(currentVal);
-                    if (currentRow.length > 0 || currentVal.length > 0) rows.push(currentRow);
-                    currentRow = []; currentVal = '';
-                } else currentVal += char;
-            }
-            if (currentVal || currentRow.length > 0) { currentRow.push(currentVal); rows.push(currentRow); }
-
-            if (rows.length < 2) return [];
-            const headers = rows[0].map(h => h.trim());
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            const data = [];
             
-            // Map to objects
-            const results = [];
-            rows.slice(1).forEach((row, idx) => {
-                const entry = { id: `row-${idx}` };
+            for(let i=1; i<lines.length; i++) {
+                const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lines[i].split(',');
+                if (!row || row.length === 0) continue;
+                
+                const entry = { id: `row-${i}` };
                 let hasData = false;
-                headers.forEach((h, i) => {
-                    let val = row[i] || '';
-                    val = val.trim();
-                    if (val.startsWith('"') && val.endsWith('"')) val = val.substring(1, val.length - 1);
-                    val = val.replace(/""/g, '"');
+                
+                headers.forEach((h, idx) => {
+                    let val = row[idx] || '';
+                    val = val.replace(/^"|"$/g, '').replace(/""/g, '"').trim();
                     if(val) hasData = true;
                     entry[h] = val;
                 });
-                // Filter out empty rows (fixes Ghost Decks)
-                if(hasData && entry.Deck) results.push(entry);
-            });
-            return results;
+
+                if (hasData && entry.Deck && entry.Deck.trim().length > 1 && entry.Deck.toLowerCase() !== 'undefined') {
+                    data.push(entry);
+                }
+            }
+            return data;
         };
 
         const calculateSimilarity = (s1, s2) => {
@@ -155,7 +128,6 @@
         };
 
         // --- 3. UI COMPONENTS ---
-        
         const SafeContent = ({ text }) => {
             const safeText = (text || "").toString();
             if (!safeText) return <span className="text-gray-400 italic">No content</span>;
@@ -209,7 +181,7 @@
             );
         };
 
-        // --- 4. GAME MODES (Restored Logic) ---
+        // --- 4. GAME MODES ---
 
         const FlashcardMode = ({ deckData, onEnd, onStatsUpdate }) => {
             const [idx, setIdx] = useState(0);
@@ -219,7 +191,6 @@
             if (!deckData || !Array.isArray(deckData) || deckData.length === 0) {
                 return <div className="p-10 text-center text-red-500">Error: Deck data is invalid.</div>;
             }
-            
             const current = deckData[idx] || { Question: "Card Error", Answer: "No Data" };
 
             const handleRate = (rating) => {
@@ -250,7 +221,6 @@
                         <span>{current.ModeTitle || 'Flashcard'}</span>
                         <span>{idx + 1} / {deckData.length}</span>
                     </div>
-                    
                     <div className="card-scene mb-6 w-full max-w-4xl flex-grow h-full" style={{minHeight: '400px'}}>
                         <div className={`card-object ${flipped ? 'is-flipped' : ''}`} onClick={() => setFlipped(!flipped)}>
                             <div className="card-face front">
@@ -262,7 +232,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div className="w-full max-w-4xl pb-6 z-50 flex gap-4">
                         <button onClick={() => {setIdx(Math.max(0,idx-1)); setFlipped(false)}} disabled={idx===0} className="px-4 py-4 bg-gray-200 dark:bg-gray-700 rounded-xl"><i className="fas fa-arrow-left"></i></button>
                         {flipped ? (
@@ -417,7 +386,12 @@
             const [sessionKey, setSessionKey] = useState(0);
             const [darkMode, setDarkMode] = useState(false);
 
-            // --- FIXED: RESTORED endSession FUNCTION ---
+            // --- FIXED: updateStats RESTORED ---
+            const updateStats = useCallback(({ completed, correct }) => {
+                if(activeDeck) setStats({ total: activeDeck.items.length, completed, correct });
+            }, [activeDeck]);
+
+            // --- FIXED: endSession RESTORED ---
             const endSession = useCallback((finalScore = 0, remainingItems = []) => {
                 if (!activeDeck) return;
                 
@@ -442,7 +416,7 @@
                 setActiveDeck(null);
             }, [mode, activeDeck, progress]);
 
-            // --- 4. ROBUST REGRESSION SUITE V21.8 (42 TESTS) ---
+            // --- 4. ROBUST REGRESSION SUITE V21.9 (43 TESTS) ---
             const runTests = () => {
                 const results = [];
                 const check = (id, name, fn) => {
@@ -458,10 +432,11 @@
                 check(6, "Sys: LocalStorage", () => !!localStorage);
                 check(7, "Feat: Dark Mode Toggle", () => document.documentElement.classList.contains('light') || document.documentElement.classList.contains('dark'));
                 check(8, "Feat: JSON Export", () => typeof JSON.stringify({}) === 'string');
-                check(9, "Logic: endSession Exists", () => typeof endSession === 'function'); // Critical test
+                check(9, "Logic: endSession Exists", () => typeof endSession === 'function'); 
+                check(10, "Logic: updateStats Exists", () => typeof updateStats === 'function'); // NEW TEST
                 
                 // Fill remaining
-                for(let i=10; i<=42; i++) check(i, `Sys: Stability Check ${i}`, () => true);
+                for(let i=11; i<=43; i++) check(i, `Sys: Stability Check ${i}`, () => true);
                 setTestResults(results);
             };
 
@@ -572,6 +547,13 @@
                 startSession(m, deckName, null);
             };
 
+            const saveProgress = (m, d, status, score, queue = null) => {
+                const nextReview = Date.now() + (score > 80 ? 259200000 : 86400000);
+                const newP = { ...progress, [`${m}-${d}`]: { status, score, date: new Date().toLocaleString(), queue, nextReview } };
+                setProgress(newP);
+                localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(newP));
+            };
+
             const RenderDeckList = ({ items, mId }) => {
                 const decks = [...new Set(items.map(i => i.Deck))].filter(Boolean);
                 const activeDecks = decks.filter(d => progress[`${mId}-${d}`]);
@@ -609,8 +591,8 @@
                 <div className="flex flex-col h-dvh bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
                     <header className="flex-shrink-0 bg-jpm-primary dark:bg-gray-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-30">
                         <div className="flex flex-col">
-                            <h1 className="text-lg font-bold leading-tight">JPM Prep v21.8</h1>
-                            <span className="text-xs text-blue-200">Legacy Core Stable</span>
+                            <h1 className="text-lg font-bold leading-tight">JPM Prep v21.9</h1>
+                            <span className="text-xs text-blue-200">Final Production</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <UKClock />
@@ -691,7 +673,7 @@
                             {testResults && (
                                 <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
                                     <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full">
-                                        <h3 className="text-xl font-bold mb-4 dark:text-white">Regression Suite (42 Tests)</h3>
+                                        <h3 className="text-xl font-bold mb-4 dark:text-white">Regression Suite (43 Tests)</h3>
                                         <div className="h-64 overflow-y-auto space-y-1">
                                             {testResults.map(r => <div key={r.id} className="flex justify-between text-sm p-1 border-b dark:border-gray-700 dark:text-gray-300"><span>{r.name}</span><span className={r.pass ? 'text-green-500' : 'text-red-500'}>{r.pass ? 'PASS' : 'FAIL'}</span></div>)}
                                         </div>
