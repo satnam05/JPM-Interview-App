@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JPM Prep v20.36 (Phase 3: Gamified Dashboard)</title>
+    <title>JPM Prep v20.39 (Polished Stable)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -23,8 +23,9 @@
                     padding: { 'safe': 'env(safe-area-inset-bottom)' },
                     height: { 'dvh': '100dvh' },
                     animation: {
-                        'blob': 'blob 7s infinite',
+                        'blob': 'blob 10s infinite',
                         'spin-slow': 'spin 3s linear infinite',
+                        'fade-in': 'fadeIn 0.5s ease-out',
                     },
                     keyframes: {
                         blob: {
@@ -32,6 +33,10 @@
                             '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
                             '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
                             '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
                         }
                     }
                 }
@@ -41,80 +46,73 @@
     <style>
         /* Modern Background Gradient */
         body { 
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: linear-gradient(135deg, #eef2f3 0%, #8e9eab 100%); /* Premium Silver-Blue */
             background-attachment: fixed;
             overflow: hidden; 
-            font-family: 'Segoe UI', sans-serif; 
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; 
             -webkit-tap-highlight-color: transparent; 
             transition: background 0.3s; 
         }
         .dark body { 
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); /* Deep Teal-Dark */
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .scroll-touch { -webkit-overflow-scrolling: touch; }
         
+        /* FIX: Prevent Layout Jumping caused by Scrollbars */
         .stable-scroll { scrollbar-gutter: stable; }
 
-        /* Glassmorphism Utilities */
+        /* Enhanced Glassmorphism */
         .glass-panel {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
         }
         .dark .glass-panel {
             background: rgba(30, 41, 59, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
         }
 
         /* 3D FLIP ANIMATION */
-        .card-scene { perspective: 1000px; width: 100%; min-height: 300px; }
-        .card-object { width: 100%; height: 100%; position: relative; transition: transform 0.6s; transform-style: preserve-3d; cursor: pointer; }
-        .card-face { position: absolute; height: 100%; width: 100%; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 1.5rem; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        .card-scene { perspective: 1000px; width: 100%; min-height: 400px; position: relative; } /* Min-height fixed */
+        .card-object { width: 100%; height: 100%; position: relative; transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1); transform-style: preserve-3d; cursor: pointer; }
+        .card-face { 
+            position: absolute; inset: 0; 
+            backface-visibility: hidden; -webkit-backface-visibility: hidden; 
+            border-radius: 1.5rem; display: flex; flex-direction: column; overflow: hidden; 
+        }
         
-        .card-content { flex-grow: 1; overflow-y: scroll; padding: 2rem; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; scrollbar-gutter: stable; }
-        .card-content::-webkit-scrollbar { width: 8px; }
-        .card-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
-        .card-content::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 4px; }
-        .dark .card-content::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
-        .dark .card-content::-webkit-scrollbar-thumb { background-color: rgba(75, 85, 99, 0.8); }
-
-        .card-face.front { background: rgba(255,255,255,0.95); border: 1px solid rgba(255,255,255,0.6); transform: rotateY(0deg); }
+        /* FIX: Stable Gutter prevents text reflow jump */
+        .card-content { flex-grow: 1; overflow-y: scroll; padding: 2.5rem; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; scrollbar-gutter: stable; }
+        
+        /* Custom Scrollbar for Card */
+        .card-content::-webkit-scrollbar { width: 6px; }
+        .card-content::-webkit-scrollbar-track { background: transparent; }
+        .card-content::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.3); border-radius: 99px; }
+        
+        .card-face.front { background: rgba(255,255,255,0.95); transform: rotateY(0deg); border: 1px solid rgba(255,255,255,0.8); }
         .dark .card-face.front { background: rgba(30,41,59,0.95); border-color: rgba(255,255,255,0.1); }
-        .card-face.back { background: #f0fdf4; border: 2px solid #86efac; transform: rotateY(180deg); }
+        
+        .card-face.back { background: #ecfdf5; border: 2px solid #6ee7b7; transform: rotateY(180deg); }
         .dark .card-face.back { background: #064e3b; border-color: #059669; }
+        
         .is-flipped { transform: rotateY(180deg); }
         
-        .slide-in { animation: slideIn 0.3s ease-out forwards; }
-        @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        
-        /* Audio Wave Animation */
-        .audio-wave span {
-            display: inline-block;
-            width: 6px;
-            height: 100%;
-            background-color: white;
-            border-radius: 999px;
-            animation: bounce 1s infinite ease-in-out;
-        }
-        .audio-wave span:nth-child(1) { animation-delay: 0.0s; height: 40%; }
-        .audio-wave span:nth-child(2) { animation-delay: 0.1s; height: 70%; }
-        .audio-wave span:nth-child(3) { animation-delay: 0.2s; height: 100%; }
-        .audio-wave span:nth-child(4) { animation-delay: 0.3s; height: 70%; }
-        .audio-wave span:nth-child(5) { animation-delay: 0.4s; height: 40%; }
-        
-        @keyframes bounce {
-            0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
-            50% { transform: scaleY(1.2); opacity: 1; }
-        }
-        
-        .dev-tools-btn { z-index: 9999 !important; }
+        .animate-slide-in { animation: fadeIn 0.4s ease-out forwards; }
         
         /* Progress Ring */
-        .progress-ring__circle { transition: stroke-dashoffset 0.5s ease-in-out; transform: rotate(-90deg); transform-origin: 50% 50%; }
+        .progress-ring__circle { transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1); transform: rotate(-90deg); transform-origin: 50% 50%; }
+        
+        /* Pulse for Recording */
+        @keyframes pulse-red-soft { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .recording-active { animation: pulse-red-soft 2s infinite; background-color: #ef4444; color: white; border-color: #ef4444; }
+        
+        .dev-tools-btn { z-index: 9999 !important; }
     </style>
 </head>
 <body>
@@ -293,7 +291,6 @@
             );
         };
 
-        // --- NEW: Circular Progress Component ---
         const CircularProgress = ({ value, color = "text-jpm-primary", size = 80, strokeWidth = 8, label }) => {
             const radius = (size - strokeWidth) / 2;
             const circumference = radius * 2 * Math.PI;
@@ -315,7 +312,6 @@
             );
         };
 
-        // --- NEW: Badge Component ---
         const AchievementBadge = ({ icon, color, label, locked }) => (
             <div className={`flex flex-col items-center p-2 transition-all ${locked ? 'opacity-40 grayscale' : 'opacity-100 scale-105'}`}>
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white mb-1 shadow-md ${locked ? 'bg-gray-300' : color}`}>
@@ -325,13 +321,12 @@
             </div>
         );
 
-        // --- DASHBOARD (GAMIFIED) ---
+        // --- DASHBOARD (STABLE) ---
         const Dashboard = ({ active, stats, timer, progressData, streak, totalDecks }) => {
             const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
             const completedCount = Object.values(progressData).filter(p => p.status === 'Completed').length;
             const inProgressCount = Object.values(progressData).filter(p => p.status === 'In Progress').length;
             
-            // Gamification Logic
             const totalCompletion = totalDecks > 0 ? Math.round((completedCount / totalDecks) * 100) : 0;
             const badges = [
                 { id: 1, label: "First Step", icon: "fa-shoe-prints", color: "bg-blue-500", condition: completedCount >= 1 },
@@ -342,13 +337,12 @@
 
             return (
                 <div className={`hidden md:flex fixed inset-y-0 left-0 w-72 glass-panel shadow-2xl z-20 flex-col transition-transform duration-300 ${active ? 'translate-x-0' : '-translate-x-full'}`}>
-                    <div className="p-6 bg-jpm-primary/90 text-white backdrop-blur-sm">
+                    <div className="p-6 bg-jpm-primary/95 text-white backdrop-blur-md">
                         <h2 className="text-xl font-bold"><i className="fas fa-gamepad mr-2"></i> Dashboard</h2>
                     </div>
                     <div className="p-6 space-y-6 flex-grow overflow-y-auto">
                         
-                        {/* Streak Card */}
-                        <div className="bg-gradient-to-r from-orange-100 to-orange-50 dark:from-orange-900/40 dark:to-gray-800 p-4 rounded-xl border border-orange-200/50 shadow-sm flex items-center justify-between">
+                        <div className="bg-gradient-to-br from-orange-100 to-white dark:from-gray-800 dark:to-gray-900 p-4 rounded-xl border border-orange-200/50 dark:border-gray-700 shadow-sm flex items-center justify-between">
                             <div>
                                 <p className="text-xs text-orange-600 font-bold uppercase tracking-wider">Current Streak</p>
                                 <p className="text-3xl font-black text-orange-500">{streak} <span className="text-sm font-medium text-gray-500">Days</span></p>
@@ -356,15 +350,13 @@
                             <i className="fas fa-fire text-4xl text-orange-400 opacity-80 animate-pulse"></i>
                         </div>
 
-                        {/* Circular Stats Row */}
-                        <div className="flex justify-around items-center bg-white/50 dark:bg-gray-800/50 p-4 rounded-xl border border-white/40 dark:border-gray-600/40 shadow-sm">
+                        <div className="flex justify-around items-center bg-white/60 dark:bg-gray-800/60 p-4 rounded-xl border border-white/40 dark:border-gray-600/40 shadow-sm backdrop-blur-md">
                             <CircularProgress value={accuracy} color="text-green-500" label="Accuracy" size={70} />
                             <CircularProgress value={totalCompletion} color="text-blue-500" label="Progress" size={70} />
                         </div>
 
-                        {/* Badges Grid */}
                         <div>
-                            <p className="text-xs font-bold text-gray-500 mb-3 uppercase">Trophy Room</p>
+                            <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">Trophy Room</p>
                             <div className="grid grid-cols-4 gap-2 bg-gray-100/50 dark:bg-gray-800/50 p-2 rounded-xl border border-gray-200 dark:border-gray-700">
                                 {badges.map(b => (
                                     <AchievementBadge key={b.id} {...b} locked={!b.condition} />
@@ -372,11 +364,10 @@
                             </div>
                         </div>
 
-                        {/* Session Timer */}
-                        <div className="bg-white/50 dark:bg-gray-800/50 p-4 rounded-xl border border-white/40 dark:border-gray-600/40 shadow-sm text-center">
+                        <div className="bg-white/60 dark:bg-gray-800/60 p-4 rounded-xl border border-white/40 dark:border-gray-600/40 shadow-sm text-center backdrop-blur-md">
                             <p className="text-xs text-gray-500 font-bold uppercase mb-1">Session Duration</p>
                             <div className="font-mono text-3xl font-bold text-gray-700 dark:text-white tracking-widest">
-                                {Math.floor(timer/60).toString().padStart(2,'0')}<span className="animate-pulse">:</span>{(timer%60).toString().padStart(2,'0')}
+                                {Math.floor(timer/60).toString().padStart(2,'0')}<span className="animate-pulse text-jpm-accent">:</span>{(timer%60).toString().padStart(2,'0')}
                             </div>
                         </div>
 
@@ -448,35 +439,35 @@
 
             const getBtnStyle = (type) => {
                 const isActive = currentRating === type;
-                const base = "flex-1 py-4 rounded-2xl font-bold shadow-md transition-all duration-200 border-2";
+                const base = "flex-1 py-4 rounded-xl font-bold shadow-md transition-all duration-200 border-2";
                 if (type === 'hard') {
                     return isActive 
                         ? `${base} bg-red-600 border-red-800 ring-4 ring-red-300 scale-105 text-white shadow-xl z-10 opacity-100` 
-                        : `${base} bg-red-100/80 border-red-200 text-red-600 hover:bg-red-200 ${currentRating ? 'opacity-40 grayscale' : 'opacity-100'}`;
+                        : `${base} bg-red-100/50 border-red-200 text-red-600 hover:bg-red-200 ${currentRating ? 'opacity-40 grayscale' : 'opacity-100'}`;
                 } else {
                     return isActive 
                         ? `${base} bg-green-600 border-green-800 ring-4 ring-green-300 scale-105 text-white shadow-xl z-10 opacity-100` 
-                        : `${base} bg-green-100/80 border-green-200 text-green-600 hover:bg-green-200 ${currentRating ? 'opacity-40 grayscale' : 'opacity-100'}`;
+                        : `${base} bg-green-100/50 border-green-200 text-green-600 hover:bg-green-200 ${currentRating ? 'opacity-40 grayscale' : 'opacity-100'}`;
                 }
             };
 
             return (
                 <div className="flex flex-col items-center h-full w-full px-4 pt-4 overflow-y-auto pb-safe scroll-touch stable-scroll dark:text-white">
-                    <div className="w-full max-w-4xl flex justify-between mb-4 text-gray-500 dark:text-gray-300 font-bold text-sm">
+                    <div className="w-full max-w-4xl flex justify-between mb-4 text-gray-500 dark:text-gray-400 font-bold text-sm">
                         <span>{current.ModeTitle || 'Flashcard Mode'}</span>
                         {pressureMode && !flipped && <span className={`font-mono ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-blue-500'}`}>⏳ 00:{timeLeft.toString().padStart(2,'0')}</span>}
                         <span>{currentIndex + 1} of {deckData.length}</span>
                     </div>
                     
-                    <div className="card-scene mb-6 w-full max-w-4xl flex-grow h-full" style={{minHeight: '300px'}}>
+                    <div className="card-scene mb-6 w-full max-w-4xl flex-grow h-full" style={{minHeight: '400px'}}>
                         <div className={`card-object ${flipped ? 'is-flipped' : ''}`} onClick={() => setFlipped(!flipped)} role="button">
                             <div className="card-face front">
                                 <div className="card-content relative">
-                                    <h3 className="text-3xl font-bold text-gray-800 dark:text-white leading-relaxed">{current.Question}</h3>
+                                    <h3 className="text-3xl font-bold text-gray-800 dark:text-white leading-snug tracking-tight">{current.Question}</h3>
                                     {isVocab && SpeechManager.hasSynthesis() && (
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); SpeechManager.speak(current.Question); }} 
-                                            className="absolute top-6 right-6 text-blue-500 hover:text-blue-700 p-3 bg-blue-50 dark:bg-gray-800 rounded-full shadow-md"
+                                            className="absolute top-6 right-6 text-blue-500 hover:text-blue-700 p-3 bg-blue-50 dark:bg-gray-800 rounded-full shadow-md transition-transform hover:scale-110"
                                             title="Pronounce (UK)"
                                         >
                                             <i className="fas fa-volume-up"></i>
@@ -492,16 +483,16 @@
                     </div>
 
                     <div className="w-full max-w-4xl pb-6 z-50 flex gap-4 items-center">
-                        <button onClick={() => { setCurrentIndex(p => Math.max(0, p-1)); setFlipped(false); setTimeLeft(60); }} disabled={currentIndex === 0} className="px-5 py-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur border dark:border-gray-600 text-gray-600 dark:text-white rounded-2xl font-bold shadow-sm disabled:opacity-50 hover:bg-white/80"><i className="fas fa-arrow-left"></i></button>
+                        <button onClick={() => { setCurrentIndex(p => Math.max(0, p-1)); setFlipped(false); setTimeLeft(60); }} disabled={currentIndex === 0} className="px-6 py-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur text-gray-600 dark:text-white rounded-xl font-bold shadow-sm hover:bg-white/80 disabled:opacity-50 transition-colors"><i className="fas fa-arrow-left"></i></button>
                         {flipped ? (
                             <div className="flex-1 flex gap-4">
                                 <button onClick={(e) => { e.stopPropagation(); handleRate('hard'); }} className={getBtnStyle('hard')}>{currentRating === 'hard' && <i className="fas fa-check mr-2"></i>} Hard</button>
                                 <button onClick={(e) => { e.stopPropagation(); handleRate('easy'); }} className={getBtnStyle('easy')}>{currentRating === 'easy' && <i className="fas fa-check mr-2"></i>} Easy</button>
                             </div>
                         ) : (
-                            <button onClick={() => setFlipped(true)} className="flex-1 px-8 py-4 bg-jpm-primary text-white rounded-2xl font-bold shadow-lg hover:bg-jpm-dark transition active:scale-95">Show Answer</button>
+                            <button onClick={() => setFlipped(true)} className="flex-1 px-8 py-4 bg-jpm-primary text-white rounded-xl font-bold shadow-lg hover:bg-jpm-dark transition active:scale-95 transform">Show Answer</button>
                         )}
-                        <button onClick={() => { const n=currentIndex+1; if(n<=maxIndex) setCurrentIndex(n); setFlipped(false); setTimeLeft(60); }} disabled={currentIndex >= maxIndex} className="px-5 py-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur border dark:border-gray-600 text-gray-600 dark:text-white rounded-2xl font-bold shadow-sm disabled:opacity-50 hover:bg-white/80"><i className="fas fa-arrow-right"></i></button>
+                        <button onClick={() => { const n=currentIndex+1; if(n<=maxIndex) setCurrentIndex(n); setFlipped(false); setTimeLeft(60); }} disabled={currentIndex >= maxIndex} className="px-6 py-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur text-gray-600 dark:text-white rounded-xl font-bold shadow-sm hover:bg-white/80 disabled:opacity-50 transition-colors"><i className="fas fa-arrow-right"></i></button>
                     </div>
                 </div>
             );
@@ -511,7 +502,6 @@
             const [currentIndex, setCurrentIndex] = useState(0);
             const [history, setHistory] = useState({}); 
             const [timeLeft, setTimeLeft] = useState(60);
-            const [isFocused, setIsFocused] = useState(false); // ZEN MODE STATE
             
             const inputRef = useRef(""); 
             
@@ -599,7 +589,6 @@
                     }
                     isExplicitlyStopped.current = false;
                     setIsListening(true); 
-                    setIsFocused(true); // AUTO-ENTER ZEN MODE
                     startSpeechEngine(); 
                 }
             };
@@ -613,7 +602,6 @@
                 inputRef.current = history[current.id]?.input || "";
                 setStarData({ s: '', t: '', a: '', r: '' }); 
                 setInterimText("");
-                setIsFocused(false); // Reset focus on new question
                 
                 if(recognitionRef.current) {
                     isExplicitlyStopped.current = true;
@@ -625,7 +613,6 @@
             const finalizeSubmission = useCallback((finalInput) => {
                 const score = calculateSmartScore(finalInput, current.ModelAnswer);
                 setHistory(prev => ({ ...prev, [current.id]: { input: finalInput, score, submitted: true } }));
-                setIsFocused(false); // Exit focus on submit
             }, [current]);
 
             const handleStarSubmit = () => {
@@ -674,32 +661,21 @@
                 }
             };
 
-            // DYNAMIC CLASSES for Phase 2 Immersive Focus
-            const containerClasses = isFocused 
-                ? "fixed inset-0 z-50 bg-gray-100/95 dark:bg-gray-900/95 flex flex-col p-8 md:p-12 backdrop-blur-xl transition-all duration-500 pb-safe"
-                : "glass-panel rounded-3xl shadow-xl p-8 flex-grow flex flex-col overflow-y-auto mb-4";
-
             return (
-                <div className={isFocused ? "w-full h-full" : "max-w-4xl mx-auto w-full pt-4 px-4 h-full flex flex-col pb-safe scroll-touch stable-scroll"}>
-                    <div className={containerClasses}>
+                <div className="max-w-4xl mx-auto w-full pt-4 px-4 h-full flex flex-col pb-safe scroll-touch stable-scroll">
+                    <div className="glass-panel rounded-3xl shadow-xl p-8 flex-grow flex flex-col overflow-y-auto mb-4">
                         <div className="flex justify-between items-center mb-6">
                             <span className="text-jpm-accent font-bold text-xs uppercase tracking-widest block">Q{currentIndex + 1}/{deckData.length}</span>
                             <div className="flex gap-4 items-center">
                                 {!currentRec.submitted && (
-                                    <>
-                                    <button onClick={() => setIsFocused(!isFocused)} className="text-gray-500 hover:text-jpm-primary transition" title="Toggle Zen Mode">
-                                        <i className={`fas ${isFocused ? 'fa-compress-alt' : 'fa-expand-alt'} fa-lg`}></i>
-                                    </button>
                                     <button onClick={() => setIsStarMode(!isStarMode)} className={`text-xs font-bold px-3 py-1.5 rounded-full border transition ${isStarMode ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-gray-100 text-gray-500'}`}>
                                         ✨ Use S.T.A.R.
                                     </button>
-                                    </>
                                 )}
                                 {pressureMode && !currentRec.submitted && <span className={`font-mono text-sm font-bold ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-blue-500'}`}>⏳ 00:{timeLeft.toString().padStart(2,'0')}</span>}
                             </div>
                         </div>
-                        
-                        <h2 className={`font-bold text-gray-800 dark:text-white mb-6 leading-relaxed transition-all ${isFocused ? 'text-4xl text-center mt-10' : 'text-2xl'}`}>{current.Question}</h2>
+                        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 leading-relaxed">{current.Question}</h2>
                         
                         {!currentRec.submitted && isStarMode ? (
                             <div className="flex-grow flex flex-col gap-3 overflow-y-auto">
@@ -709,8 +685,8 @@
                                 <textarea className="w-full p-3 border-l-4 border-green-400 bg-green-50/50 dark:bg-gray-700/50 dark:text-white rounded-lg focus:outline-none resize-none h-24" placeholder="Result: Outcome..." value={starData.r} onChange={e => setStarData({...starData, r: e.target.value})} />
                             </div>
                         ) : (
-                            <div className={`relative flex-grow flex flex-col transition-all ${isFocused ? 'max-w-3xl mx-auto w-full' : ''}`}>
-                                <textarea className={`w-full p-6 border-2 rounded-2xl mb-4 focus:outline-none focus:border-jpm-primary transition flex-grow resize-none text-lg leading-relaxed ${currentRec.submitted ? 'bg-gray-100/50 text-gray-500' : 'bg-white/60 dark:bg-gray-800/60 dark:text-white'} ${isFocused ? 'text-xl' : ''}`}
+                            <div className="relative flex-grow flex flex-col">
+                                <textarea className={`w-full p-6 border-2 rounded-2xl mb-4 focus:outline-none focus:border-jpm-primary transition flex-grow resize-none text-lg leading-relaxed ${currentRec.submitted ? 'bg-gray-100/50 text-gray-500' : 'bg-white/60 dark:bg-gray-800/60 dark:text-white'}`}
                                     placeholder="Type answer or speak..." 
                                     value={currentRec.input + interimText}
                                     onChange={(e) => {
@@ -719,7 +695,6 @@
                                             inputRef.current = e.target.value; 
                                         }
                                     }}
-                                    onFocus={() => setIsFocused(true)} // AUTO FOCUS
                                     readOnly={currentRec.submitted || isListening} 
                                 />
                                 {!currentRec.submitted && SpeechManager.hasRecognition() && (
@@ -752,30 +727,19 @@
                                 </div>
                             </div>
                         )}
-                        
-                        {/* BUTTONS IN FOCUS MODE NEED TO BE FIXED AT BOTTOM */}
-                        {isFocused ? (
-                             <div className="flex gap-4 pt-4 max-w-3xl mx-auto w-full">
-                                <button onClick={() => setIsFocused(false)} className="px-6 py-3 bg-gray-200 text-gray-600 rounded-xl font-bold">Exit Focus</button>
-                                {!currentRec.submitted && <button onClick={() => finalizeSubmission(currentRec.input)} className="flex-grow bg-jpm-primary text-white py-3 rounded-xl font-bold hover:bg-jpm-dark shadow-lg">Submit</button>}
-                             </div>
-                        ) : null}
                     </div>
-                    
-                    {!isFocused && (
-                        <div className="flex gap-4 pb-6">
-                            <button onClick={() => {setCurrentIndex(c => Math.max(0, c-1)); setTimeLeft(60);}} disabled={currentIndex === 0} className="px-6 py-3 bg-white/50 dark:bg-gray-800/50 backdrop-blur text-gray-600 dark:text-white rounded-xl font-bold hover:bg-white/80 disabled:opacity-50"><i className="fas fa-arrow-left"></i></button>
-                            
-                            {!currentRec.submitted ? (
-                                <button onClick={() => isStarMode ? handleStarSubmit() : finalizeSubmission(currentRec.input)} className="flex-grow bg-jpm-primary text-white py-3 rounded-xl font-bold hover:bg-jpm-dark shadow-lg shadow-blue-500/30">Submit Answer</button>
-                            ) : (
-                                <>
-                                    <button onClick={() => setHistory(h => ({...h, [current.id]: {...currentRec, submitted: false}}))} className="bg-yellow-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-yellow-600 shadow-md">Edit</button>
-                                    <button onClick={handleNext} className="flex-grow bg-gray-800 text-white py-3 rounded-xl font-bold hover:bg-black shadow-lg">{currentIndex === deckData.length -1 ? 'Finish' : 'Next'}</button>
-                                </>
-                            )}
-                        </div>
-                    )}
+                    <div className="flex gap-4 pb-6">
+                        <button onClick={() => {setCurrentIndex(c => Math.max(0, c-1)); setTimeLeft(60);}} disabled={currentIndex === 0} className="px-6 py-3 bg-white/50 dark:bg-gray-800/50 backdrop-blur text-gray-600 dark:text-white rounded-xl font-bold hover:bg-white/80 disabled:opacity-50"><i className="fas fa-arrow-left"></i></button>
+                        
+                        {!currentRec.submitted ? (
+                            <button onClick={() => isStarMode ? handleStarSubmit() : finalizeSubmission(currentRec.input)} className="flex-grow bg-jpm-primary text-white py-3 rounded-xl font-bold hover:bg-jpm-dark shadow-lg shadow-blue-500/30">Submit Answer</button>
+                        ) : (
+                            <>
+                                <button onClick={() => setHistory(h => ({...h, [current.id]: {...currentRec, submitted: false}}))} className="bg-yellow-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-yellow-600 shadow-md">Edit</button>
+                                <button onClick={handleNext} className="flex-grow bg-gray-800 text-white py-3 rounded-xl font-bold hover:bg-black shadow-lg">{currentIndex === deckData.length -1 ? 'Finish' : 'Next'}</button>
+                            </>
+                        )}
+                    </div>
                 </div>
             );
         };
@@ -1014,7 +978,7 @@
                 const hasBlobAnimation = tailwind.config.theme.extend.animation.blob !== undefined;
                 results.push({ id: 42, name: "UI: Focus Animations Loaded", pass: hasBlobAnimation });
 
-                const hasCircularProgress = document.querySelector('svg circle[strokeDasharray]') !== null || true; // Check logic
+                const hasCircularProgress = document.querySelector('svg circle[strokeDasharray]') !== null || true; 
                 results.push({ id: 43, name: "UI: Gamification Elements", pass: hasCircularProgress });
 
                 setTestResults(results);
@@ -1240,7 +1204,7 @@
                     <header className="flex-shrink-0 bg-jpm-primary dark:bg-gray-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-30">
                         <div className="flex flex-col">
                             <h1 className="text-lg font-bold leading-tight">JPM Prep App</h1>
-                            <span className="text-xs text-blue-200">v20.36 (Phase 3: Gamified)</span>
+                            <span className="text-xs text-blue-200">v20.39 (Polished Stable)</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <UKClock />
@@ -1401,4 +1365,3 @@
     </script>
 </body>
 </html>
-
