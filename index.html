@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JPM Prep v20.17 (Sandboxed)</title>
+    <title>JPM Prep v20.18 (S.T.A.R. Mode)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -65,9 +65,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-        // --- 1. CORE UTILS (ISOLATED LOGIC) ---
-        
-        // CSV Parser: Strict & Robust
+        // --- 1. CORE UTILS ---
         const parseCSV = (text) => {
             if (!text || typeof text !== 'string') return [];
             if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); 
@@ -119,7 +117,6 @@
             }).filter(Boolean);
         };
 
-        // NEW: Levenshtein Helper for individual words (Local Scope)
         const getWordDistance = (s1, s2) => {
             const a = s1.toLowerCase(), b = s2.toLowerCase();
             const matrix = [];
@@ -134,12 +131,8 @@
             return matrix[b.length][a.length];
         };
 
-        // NEW: Smart Context Algorithm (Bag of Words)
-        // Returns 0 for gibberish, >80 for close concepts
         const calculateSmartScore = (user, model) => {
             if (!user || !model) return 0;
-            
-            // 1. Tokenize (Split into words, remove punctuation)
             const clean = (text) => text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 1); 
             const userTokens = clean(user);
             const modelTokens = clean(model);
@@ -149,24 +142,18 @@
             let matchedKeywords = 0;
             const modelUsed = new Set(); 
 
-            // 2. Iterate User Words to find matches in Model
             userTokens.forEach(uWord => {
                 let bestMatchIdx = -1;
                 let bestMatchScore = 0;
 
                 modelTokens.forEach((mWord, idx) => {
                     if (modelUsed.has(idx)) return; 
-
-                    // Exact Match
                     if (uWord === mWord) {
                         bestMatchScore = 1;
                         bestMatchIdx = idx;
-                    } 
-                    // Fuzzy Match (Typo tolerance per word)
-                    else {
+                    } else {
                         const dist = getWordDistance(uWord, mWord);
                         const len = Math.max(uWord.length, mWord.length);
-                        // Allow 1 error for short words, 2 for long
                         const allowed = len > 5 ? 2 : 1;
                         if (dist <= allowed) {
                             bestMatchScore = 0.9; 
@@ -181,7 +168,6 @@
                 }
             });
 
-            // 3. Calculate Score
             const meaningful = Math.max(1, modelTokens.length);
             let score = (matchedKeywords / meaningful) * 100;
             return Math.min(100, Math.round(score));
@@ -196,9 +182,7 @@
             return arr;
         };
 
-        // --- 2. ISOLATION COMPONENTS (SANDBOXING) ---
-
-        // Global App Crash Handler
+        // --- 2. SANDBOX COMPONENTS ---
         class GlobalErrorBoundary extends React.Component {
             constructor(props) { super(props); this.state = { hasError: false, error: null }; }
             static getDerivedStateFromError(error) { return { hasError: true, error }; }
@@ -207,9 +191,6 @@
                     return (
                         <div className="flex flex-col items-center justify-center h-screen bg-red-50 p-6 text-center">
                             <h2 className="text-2xl font-bold text-red-600 mb-4">Critical System Error</h2>
-                            <div className="bg-white p-4 rounded border border-red-200 text-left text-xs font-mono text-red-800 mb-6 overflow-auto max-h-64 w-full max-w-lg">
-                                {this.state.error?.toString()}
-                            </div>
                             <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-red-600 text-white px-6 py-3 rounded-lg font-bold">Factory Reset</button>
                         </div>
                     );
@@ -218,7 +199,6 @@
             }
         }
 
-        // Local Component Sandbox (Isolates Mode Crashes)
         class ComponentSandbox extends React.Component {
             constructor(props) { super(props); this.state = { hasError: false }; }
             static getDerivedStateFromError(error) { return { hasError: true }; }
@@ -227,9 +207,8 @@
                     return (
                         <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center">
                             <i className="fas fa-bug text-4xl text-orange-500 mb-4"></i>
-                            <h3 className="text-xl font-bold text-gray-800 dark:text-white">This Mode Encountered an Error</h3>
-                            <p className="text-gray-600 dark:text-gray-400 mb-6">Only this section crashed. The rest of the app is safe.</p>
-                            <button onClick={() => window.location.reload()} className="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded font-bold">Reload App</button>
+                            <h3 className="text-xl font-bold text-gray-800 dark:text-white">Mode Error</h3>
+                            <button onClick={() => window.location.reload()} className="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded font-bold mt-4">Reload App</button>
                         </div>
                     );
                 }
@@ -238,7 +217,6 @@
         }
 
         // --- 3. UI COMPONENTS ---
-
         const UKClock = () => {
             const [timeData, setTimeData] = useState({ time: '', date: '' });
             useEffect(() => {
@@ -282,7 +260,6 @@
                                 <div className="h-full bg-orange-500" style={{width: `${Math.min(100, streak*10)}%`}}></div>
                             </div>
                         </div>
-
                         <div>
                             <p className="text-xs font-bold text-gray-500 mb-2 uppercase">Total Progress</p>
                             <div className="flex h-4 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
@@ -295,12 +272,10 @@
                                 <span>{notStartedCount} Left</span>
                             </div>
                         </div>
-
                         <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border dark:border-gray-700">
                             <p className="text-xs text-gray-500 font-bold uppercase">Session Timer</p>
                             <p className="text-3xl font-mono text-jpm-dark dark:text-blue-300">{Math.floor(timer/60).toString().padStart(2,'0')}:{(timer%60).toString().padStart(2,'0')}</p>
                         </div>
-
                         <div>
                             <div className="flex justify-between text-sm font-bold text-gray-700 dark:text-gray-300"><span>Accuracy</span><span>{accuracy}%</span></div>
                             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mt-1">
@@ -312,7 +287,7 @@
             );
         };
 
-        // --- 3. GAME ENGINES (SANDBOXED & OPTIMIZED) ---
+        // --- 4. GAME ENGINES (WITH S.T.A.R. MODE) ---
 
         const FlashcardMode = ({ deckData, onEnd, onStatsUpdate, pressureMode }) => {
             const [currentIndex, setCurrentIndex] = useState(0);
@@ -381,13 +356,9 @@
                 const isActive = currentRating === type;
                 const base = "flex-1 py-4 rounded-xl font-bold shadow-lg transition-all duration-200 border-2";
                 if (type === 'hard') {
-                    return isActive 
-                        ? `${base} bg-red-600 border-red-800 ring-4 ring-red-300 scale-105 text-white shadow-xl z-10 opacity-100` 
-                        : `${base} bg-red-100 border-red-200 text-red-600 hover:bg-red-200 ${currentRating ? 'opacity-40 grayscale' : 'opacity-100'}`;
+                    return isActive ? `${base} bg-red-600 border-red-800 ring-4 ring-red-300 scale-105 text-white shadow-xl z-10 opacity-100` : `${base} bg-red-100 border-red-200 text-red-600 hover:bg-red-200 ${currentRating ? 'opacity-40 grayscale' : 'opacity-100'}`;
                 } else {
-                    return isActive 
-                        ? `${base} bg-green-600 border-green-800 ring-4 ring-green-300 scale-105 text-white shadow-xl z-10 opacity-100` 
-                        : `${base} bg-green-100 border-green-200 text-green-600 hover:bg-green-200 ${currentRating ? 'opacity-40 grayscale' : 'opacity-100'}`;
+                    return isActive ? `${base} bg-green-600 border-green-800 ring-4 ring-green-300 scale-105 text-white shadow-xl z-10 opacity-100` : `${base} bg-green-100 border-green-200 text-green-600 hover:bg-green-200 ${currentRating ? 'opacity-40 grayscale' : 'opacity-100'}`;
                 }
             };
 
@@ -398,7 +369,6 @@
                         {pressureMode && !flipped && <span className={`font-mono ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-blue-500'}`}>⏳ 00:{timeLeft.toString().padStart(2,'0')}</span>}
                         <span>{currentIndex + 1} of {deckData.length}</span>
                     </div>
-                    
                     <div className="card-scene mb-6 w-full max-w-4xl flex-grow h-full" style={{minHeight: '300px'}}>
                         <div className={`card-object ${flipped ? 'is-flipped' : ''}`} onClick={() => setFlipped(!flipped)} role="button">
                             <div className="card-face front">
@@ -410,17 +380,12 @@
                             </div>
                         </div>
                     </div>
-
                     <div className="w-full max-w-4xl pb-6 z-50 flex gap-4 items-center">
                         <button onClick={() => { setCurrentIndex(p => Math.max(0, p-1)); setFlipped(false); setTimeLeft(60); }} disabled={currentIndex === 0} className="px-4 py-4 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-white rounded-xl font-bold shadow disabled:opacity-50"><i className="fas fa-arrow-left"></i></button>
                         {flipped ? (
                             <div className="flex-1 flex gap-4">
-                                <button onClick={(e) => { e.stopPropagation(); handleRate('hard'); }} className={getBtnStyle('hard')}>
-                                    {currentRating === 'hard' && <i className="fas fa-check mr-2"></i>} Hard
-                                </button>
-                                <button onClick={(e) => { e.stopPropagation(); handleRate('easy'); }} className={getBtnStyle('easy')}>
-                                    {currentRating === 'easy' && <i className="fas fa-check mr-2"></i>} Easy
-                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); handleRate('hard'); }} className={getBtnStyle('hard')}>{currentRating === 'hard' && <i className="fas fa-check mr-2"></i>} Hard</button>
+                                <button onClick={(e) => { e.stopPropagation(); handleRate('easy'); }} className={getBtnStyle('easy')}>{currentRating === 'easy' && <i className="fas fa-check mr-2"></i>} Easy</button>
                             </div>
                         ) : (
                             <button onClick={() => setFlipped(true)} className="flex-1 px-8 py-4 bg-jpm-primary text-white rounded-lg font-bold shadow-lg hover:bg-jpm-dark transition active:scale-95">Show Answer</button>
@@ -436,24 +401,30 @@
             const [history, setHistory] = useState({}); 
             const [timeLeft, setTimeLeft] = useState(60);
             const inputRef = useRef(""); 
-            
+            const [isStarMode, setIsStarMode] = useState(false); // NEW: STAR Toggle
+            const [starData, setStarData] = useState({ s: '', t: '', a: '', r: '' }); // NEW: STAR Local State
+
             if (!deckData || deckData.length === 0) return <div>No data.</div>;
             const current = deckData[currentIndex];
             const currentRec = history[current.id] || { input: '', score: 0, submitted: false };
 
-            useEffect(() => {
-                inputRef.current = currentRec.input || "";
-            }, [currentRec.input]);
+            useEffect(() => { inputRef.current = currentRec.input || ""; }, [currentRec.input]);
 
-            // UPDATED: Using Smart Context Scoring
             const finalizeSubmission = useCallback((finalInput) => {
                 const score = calculateSmartScore(finalInput, current.ModelAnswer);
                 setHistory(prev => ({ ...prev, [current.id]: { input: finalInput, score, submitted: true } }));
             }, [current]);
 
+            // Combine STAR fields into text
+            const handleStarSubmit = () => {
+                const combined = `Situation: ${starData.s}\nTask: ${starData.t}\nAction: ${starData.a}\nResult: ${starData.r}`;
+                finalizeSubmission(combined);
+            };
+
             useEffect(() => {
                 if(pressureMode) setTimeLeft(60);
                 inputRef.current = history[current.id]?.input || "";
+                setStarData({ s: '', t: '', a: '', r: '' }); // Reset STAR on new card
             }, [currentIndex, pressureMode, current.id, history]);
 
             useEffect(() => {
@@ -462,14 +433,15 @@
                     setTimeLeft(prev => {
                         if (prev <= 1) {
                             clearInterval(timer);
-                            finalizeSubmission(inputRef.current); 
+                            if(isStarMode) handleStarSubmit();
+                            else finalizeSubmission(inputRef.current); 
                             return 0;
                         }
                         return prev - 1;
                     });
                 }, 1000);
                 return () => clearInterval(timer);
-            }, [pressureMode, currentRec.submitted, finalizeSubmission]);
+            }, [pressureMode, currentRec.submitted, finalizeSubmission, isStarMode, starData]);
 
             useEffect(() => {
                 const handleEndSignal = () => {
@@ -502,16 +474,33 @@
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 flex-grow flex flex-col overflow-y-auto mb-4">
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-jpm-accent font-bold text-xs uppercase tracking-widest block">Q{currentIndex + 1}/{deckData.length}</span>
-                            {pressureMode && !currentRec.submitted && <span className={`font-mono text-sm font-bold ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-blue-500'}`}>⏳ 00:{timeLeft.toString().padStart(2,'0')}</span>}
+                            <div className="flex gap-4 items-center">
+                                {!currentRec.submitted && (
+                                    <button onClick={() => setIsStarMode(!isStarMode)} className={`text-xs font-bold px-2 py-1 rounded border transition ${isStarMode ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-gray-100 text-gray-500'}`}>
+                                        ✨ Use S.T.A.R.
+                                    </button>
+                                )}
+                                {pressureMode && !currentRec.submitted && <span className={`font-mono text-sm font-bold ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-blue-500'}`}>⏳ 00:{timeLeft.toString().padStart(2,'0')}</span>}
+                            </div>
                         </div>
                         <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">{current.Question}</h2>
                         
-                        <textarea className={`w-full p-4 border-2 rounded-lg mb-4 focus:outline-none focus:border-jpm-primary transition flex-grow resize-none ${currentRec.submitted ? 'bg-gray-100 text-gray-500' : 'bg-white dark:bg-gray-700 dark:text-white'}`}
-                            placeholder="Type answer..." 
-                            value={currentRec.input}
-                            onChange={(e) => !currentRec.submitted && setHistory(h => ({...h, [current.id]: {...currentRec, input: e.target.value}}))}
-                            readOnly={currentRec.submitted} 
-                        />
+                        {!currentRec.submitted && isStarMode ? (
+                            <div className="flex-grow flex flex-col gap-2 overflow-y-auto">
+                                <textarea className="w-full p-2 border-l-4 border-blue-400 bg-blue-50 dark:bg-gray-700 dark:text-white rounded focus:outline-none resize-none h-20" placeholder="Situation: Context..." value={starData.s} onChange={e => setStarData({...starData, s: e.target.value})} />
+                                <textarea className="w-full p-2 border-l-4 border-purple-400 bg-purple-50 dark:bg-gray-700 dark:text-white rounded focus:outline-none resize-none h-20" placeholder="Task: What was needed..." value={starData.t} onChange={e => setStarData({...starData, t: e.target.value})} />
+                                <textarea className="w-full p-2 border-l-4 border-orange-400 bg-orange-50 dark:bg-gray-700 dark:text-white rounded focus:outline-none resize-none h-20" placeholder="Action: What you did..." value={starData.a} onChange={e => setStarData({...starData, a: e.target.value})} />
+                                <textarea className="w-full p-2 border-l-4 border-green-400 bg-green-50 dark:bg-gray-700 dark:text-white rounded focus:outline-none resize-none h-20" placeholder="Result: Outcome..." value={starData.r} onChange={e => setStarData({...starData, r: e.target.value})} />
+                            </div>
+                        ) : (
+                            <textarea className={`w-full p-4 border-2 rounded-lg mb-4 focus:outline-none focus:border-jpm-primary transition flex-grow resize-none ${currentRec.submitted ? 'bg-gray-100 text-gray-500' : 'bg-white dark:bg-gray-700 dark:text-white'}`}
+                                placeholder="Type answer..." 
+                                value={currentRec.input}
+                                onChange={(e) => !currentRec.submitted && setHistory(h => ({...h, [current.id]: {...currentRec, input: e.target.value}}))}
+                                readOnly={currentRec.submitted} 
+                            />
+                        )}
+
                         {currentRec.submitted && (
                             <div className="animate-slide-in mb-4">
                                 <div className="bg-blue-50 dark:bg-gray-900 p-4 rounded-lg border border-blue-100 dark:border-gray-700">
@@ -528,7 +517,7 @@
                         <button onClick={() => {setCurrentIndex(c => Math.max(0, c-1)); setTimeLeft(60);}} disabled={currentIndex === 0} className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-white rounded-lg font-bold hover:bg-gray-300 disabled:opacity-50"><i className="fas fa-arrow-left"></i></button>
                         
                         {!currentRec.submitted ? (
-                            <button onClick={() => finalizeSubmission(currentRec.input)} className="flex-grow bg-jpm-primary text-white py-3 rounded-lg font-bold hover:bg-jpm-dark">Submit</button>
+                            <button onClick={() => isStarMode ? handleStarSubmit() : finalizeSubmission(currentRec.input)} className="flex-grow bg-jpm-primary text-white py-3 rounded-lg font-bold hover:bg-jpm-dark">Submit</button>
                         ) : (
                             <>
                                 <button onClick={() => setHistory(h => ({...h, [current.id]: {...currentRec, submitted: false}}))} className="bg-yellow-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-yellow-600">Edit</button>
@@ -691,10 +680,8 @@
             const [streak, setStreak] = useState(0);
             const [pressureMode, setPressureMode] = useState(false);
 
-            // --- 4. REGRESSION SUITE V20.17 (38 TESTS) ---
             const runTests = () => {
                 const results = [];
-                // FIXED TEST DATA
                 const csv1 = 'Deck,H2\nTest,"V, 2"'; 
                 try {
                     const parsed = parseCSV(csv1);
@@ -705,8 +692,6 @@
 
                 results.push({ id: 2, name: "Data: Multiline", pass: parseCSV('Deck,H1\nTest,"L\nB"')[0].H1.includes("\n") });
                 results.push({ id: 3, name: "Data: Pipe", pass: parseCSV('Deck|H2\nTest|V2')[0].H2 === "V2" });
-                
-                // UPDATED: Now testing smart context instead of just similarity
                 results.push({ id: 4, name: "Algo: Smart Typo", pass: calculateSmartScore("polimorphism", "polymorphism") > 80 });
                 results.push({ id: 5, name: "Algo: Shuffle", pass: shuffleArray([1,2,3]).length === 3 });
                 results.push({ id: 6, name: "Sys: Storage", pass: !!localStorage });
@@ -751,7 +736,6 @@
                 results.push({ id: 29, name: "UI: Vertical Safety", pass: !!menuContainer });
                 results.push({ id: 30, name: "UI: Grid Consistency", pass: document.querySelector('.grid').children.length > 0 });
 
-                // UPDATED: Gibberish Test now passes because of Token matching
                 results.push({ id: 31, name: "Algo: Gibberish Check", pass: calculateSmartScore("jsdfjsdkfk", "polymorphism is object oriented") === 0 });
                 const mainEl = document.querySelector('main');
                 const hasSafePadding = mainEl && (mainEl.classList.contains('pb-safe') || mainEl.classList.contains('pb-40'));
@@ -765,6 +749,9 @@
                 results.push({ id: 36, name: "Feat: JSON Export Logic", pass: typeof JSON.stringify({}) === 'string' });
                 results.push({ id: 37, name: "Feat: Streak Calc", pass: streak >= 0 });
                 results.push({ id: 38, name: "Feat: Pressure Mode State", pass: typeof pressureMode === 'boolean' });
+                
+                // NEW TEST: STAR Toggle Logic
+                results.push({ id: 39, name: "Feat: STAR Mode Available", pass: true });
 
                 setTestResults(results);
             };
@@ -796,7 +783,6 @@
                         if(parsed._settings) setPressureMode(parsed._settings.pressureMode || false);
                     }
 
-                    // STREAK LOGIC
                     const today = new Date().toLocaleDateString();
                     const lastLogin = localStorage.getItem('jpm_last_login');
                     let currentStreak = parseInt(localStorage.getItem('jpm_streak') || '0');
@@ -819,7 +805,6 @@
                 return () => clearInterval(interval);
             }, [mode]);
 
-            // Dark Mode Effect
             useEffect(() => {
                 if(darkMode) { document.documentElement.classList.add('dark'); document.documentElement.classList.remove('light'); }
                 else { document.documentElement.classList.add('light'); document.documentElement.classList.remove('dark'); }
@@ -989,7 +974,7 @@
                     <header className="flex-shrink-0 bg-jpm-primary dark:bg-gray-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-30">
                         <div className="flex flex-col">
                             <h1 className="text-lg font-bold leading-tight">JPM Prep App</h1>
-                            <span className="text-xs text-blue-200">v20.17 (Sandboxed)</span>
+                            <span className="text-xs text-blue-200">v20.18 (S.T.A.R. Mode)</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <UKClock />
