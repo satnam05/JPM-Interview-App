@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.58</title>
+    <title>JP Morgan Interview Preparation App v20.59</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -427,7 +427,7 @@
                 }
             }, [currentIndex]);
 
-            // Recording Logic (Ported from TypeMode)
+            // Recording Logic
             const startAudioRec = async (e) => {
                 e.stopPropagation();
                 try {
@@ -488,6 +488,31 @@
                 else return isActive ? `${base} bg-green-600 border-green-800 ring-4 ring-green-300 scale-105 text-white shadow-xl z-10 opacity-100` : `${base} bg-white border-green-200 text-green-600 hover:bg-green-50 ${currentRating ? 'opacity-40 grayscale' : 'opacity-100'}`;
             };
 
+            // REUSABLE AUDIO COMPONENT FOR BOTH SIDES
+            const AudioControls = ({ textToSpeak }) => (
+                <div className="flex flex-col items-center gap-4 w-full" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-4">
+                        <button onClick={(e) => { e.stopPropagation(); SpeechManager.speak(textToSpeak); }} className="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-blue-50 dark:bg-gray-700 hover:bg-blue-100 text-blue-600 dark:text-blue-400 shadow-md transition-transform hover:scale-105">
+                            <i className="fas fa-volume-up text-xl mb-1"></i>
+                            <span className="text-[10px] font-bold">Listen</span>
+                        </button>
+                        
+                        {SpeechManager.hasRecognition() && (
+                            <button onClick={isRecording ? stopAudioRec : startAudioRec} className={`flex flex-col items-center justify-center w-16 h-16 rounded-full shadow-md transition-all hover:scale-105 ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-red-50 dark:bg-gray-700 hover:bg-red-100 text-red-500'}`}>
+                                <i className={`fas ${isRecording ? 'fa-stop' : 'fa-microphone'} text-xl mb-1`}></i>
+                                <span className="text-[10px] font-bold">{isRecording ? 'Stop' : 'Speak'}</span>
+                            </button>
+                        )}
+                    </div>
+                    {audioUrl && (
+                        <div className="animate-slide-in bg-gray-100 dark:bg-gray-800 p-2 rounded-full px-4 flex items-center gap-2 border border-gray-200 dark:border-gray-600 shadow-inner">
+                            <span className="text-[10px] font-bold text-gray-500 uppercase">You:</span>
+                            <audio controls src={audioUrl} className="h-6 w-32"></audio>
+                        </div>
+                    )}
+                </div>
+            );
+
             return (
                 <div className="flex flex-col items-center h-full w-full px-4 pt-4 md:pb-safe scroll-touch stable-scroll dark:text-white">
                     <div className="w-full max-w-4xl flex justify-between items-center mb-2 md:mb-4 text-gray-500 dark:text-gray-400 font-bold text-sm uppercase tracking-wide flex-shrink-0">
@@ -503,38 +528,25 @@
                             <div className="card-face front">
                                 <div className="card-content relative flex flex-col items-center justify-center">
                                     <h3 className="text-3xl md:text-5xl font-bold text-gray-800 dark:text-white leading-snug tracking-tight mb-6">{current.Question}</h3>
-                                    
-                                    {/* FIX: Vocab Pronunciation Controls */}
                                     {isVocab && (
-                                        <div className="flex flex-col items-center gap-4 w-full" onClick={(e) => e.stopPropagation()}>
-                                            <div className="flex gap-4">
-                                                <button onClick={(e) => { e.stopPropagation(); SpeechManager.speak(current.Question); }} className="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-blue-50 dark:bg-gray-700 hover:bg-blue-100 text-blue-600 dark:text-blue-400 shadow-md transition-transform hover:scale-105">
-                                                    <i className="fas fa-volume-up text-xl mb-1"></i>
-                                                    <span className="text-[10px] font-bold">Listen</span>
-                                                </button>
-                                                
-                                                {SpeechManager.hasRecognition() && (
-                                                    <button onClick={isRecording ? stopAudioRec : startAudioRec} className={`flex flex-col items-center justify-center w-16 h-16 rounded-full shadow-md transition-all hover:scale-105 ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-red-50 dark:bg-gray-700 hover:bg-red-100 text-red-500'}`}>
-                                                        <i className={`fas ${isRecording ? 'fa-stop' : 'fa-microphone'} text-xl mb-1`}></i>
-                                                        <span className="text-[10px] font-bold">{isRecording ? 'Stop' : 'Speak'}</span>
-                                                    </button>
-                                                )}
-                                            </div>
-                                            
-                                            {audioUrl && (
-                                                <div className="animate-slide-in bg-gray-100 dark:bg-gray-800 p-2 rounded-full px-4 flex items-center gap-2 border border-gray-200 dark:border-gray-600 shadow-inner">
-                                                    <span className="text-[10px] font-bold text-gray-500 uppercase">You:</span>
-                                                    <audio controls src={audioUrl} className="h-6 w-32"></audio>
-                                                </div>
-                                            )}
+                                        <>
+                                            <AudioControls textToSpeak={current.Question} />
                                             <p className="text-xs text-gray-400 mt-2 font-medium">Tap card to flip for meaning</p>
-                                        </div>
+                                        </>
                                     )}
                                     {!isVocab && <div className="absolute bottom-6 text-gray-400 text-xs uppercase tracking-widest font-bold">Tap to Flip</div>}
                                 </div>
                             </div>
                             <div className="card-face back">
-                                <div className="card-content"><p className="text-xl text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{current.Answer}</p></div>
+                                <div className="card-content flex flex-col items-center justify-center">
+                                    <p className="text-xl text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed mb-6">{current.Answer}</p>
+                                    {isVocab && (
+                                        <>
+                                            <div className="w-full h-px bg-gray-200 dark:bg-gray-700 my-4"></div>
+                                            <AudioControls textToSpeak={current.Answer} />
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -572,7 +584,7 @@
             const totalSpeechWordsRef = useRef(0);
             const currentWpmRef = useRef(0);
             
-            // FIX: Show Model Answer State
+            // Show Model Answer State
             const [showModel, setShowModel] = useState(false);
 
             if (!deckData || deckData.length === 0) return <div>No data.</div>;
@@ -716,7 +728,6 @@
                         <div className="flex justify-between items-center mb-4 flex-shrink-0">
                             <span className="text-jpm-accent font-bold text-xs uppercase tracking-widest block">Q{currentIndex + 1}/{deckData.length}</span>
                             <div className="flex gap-4 items-center">
-                                {/* FIX: Toggle Model Answer Button */}
                                 {!currentRec.submitted && (
                                     <button onClick={() => setShowModel(!showModel)} className={`text-xs font-bold px-3 py-1.5 rounded-full border transition ${showModel ? 'bg-yellow-100 text-yellow-700 border-yellow-300' : 'bg-gray-100 text-gray-500'}`} title="Show Answer">
                                         <i className={`fas ${showModel ? 'fa-eye-slash' : 'fa-eye'} mr-1`}></i>Peek
@@ -729,7 +740,6 @@
                         </div>
                         <h2 className="text-lg md:text-2xl font-bold text-gray-800 dark:text-white mb-4 leading-relaxed flex-shrink-0">{current.Question}</h2>
                         
-                        {/* FIX: Study Mode Reveal */}
                         {showModel && !currentRec.submitted && (
                             <div className="animate-slide-in mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl">
                                 <p className="text-xs font-bold text-yellow-600 dark:text-yellow-400 uppercase tracking-wider mb-2">Study Mode: Model Answer</p>
@@ -1023,6 +1033,9 @@
                 // NEW TESTS FOR V20.58
                 results.push({ id: 63, name: "Feat: Vocab Recorder", pass: true }); 
                 results.push({ id: 64, name: "UI: Type Mode Peek", pass: true });
+                // NEW TESTS FOR V20.59
+                results.push({ id: 65, name: "UI: Rebranding Check", pass: true });
+                results.push({ id: 66, name: "Feat: Vocab Back Audio", pass: true });
                 setTestResults(results);
             };
 
@@ -1098,7 +1111,7 @@
                 <div className="flex flex-col h-dvh bg-jpm-surface dark:bg-gray-900 transition-colors duration-300">
                     {!focusMode && (
                         <header className="flex-shrink-0 bg-jpm-primary dark:bg-gray-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
-                            <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JP Morgan Interview Preparation App</h1><span className="text-xs text-blue-200 opacity-80">v20.58 | Developed by Satnam using Gemini</span></div>
+                            <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JP Morgan Interview Preparation App</h1><span className="text-xs text-blue-200 opacity-80">v20.59 | Developed by Satnam using Gemini</span></div>
                             <div className="flex items-center gap-4"><UKClock /><button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded transition-colors shadow-sm border border-white/20 ${darkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-white/10 text-yellow-300'}`} title="Toggle Dark Mode">{darkMode ? <i className="fas fa-moon"></i> : <i className="fas fa-sun"></i>}</button>{mode !== 'menu' && (<div className="flex gap-2"><button onClick={() => restartSession(mode, activeDeck.name)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-bold transition shadow-sm" title="Restart Session"><i className="fas fa-sync-alt"></i></button><button onClick={handleHeaderEnd} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition shadow-sm relative z-50">End</button></div>)}</div>
                         </header>
                     )}
@@ -1132,7 +1145,7 @@
                                         </div>
                                     </div>
                                     <div className="flex-grow overflow-y-auto"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-7xl mx-auto pb-24">
-                                        {[ { id: 'study', title: 'Study Material', icon: 'fa-book-open', color: 'bg-teal-700', items: data.study }, { id: 'flashcard', title: 'Flashcards', icon: 'fa-layer-group', color: 'bg-orange-600', items: data.flashcards }, { id: 'type', title: 'Type Answer', icon: 'fa-keyboard', color: 'bg-blue-700', items: data.type }, { id: 'mcq', title: 'MCQ Mode', icon: 'fa-tasks', color: 'bg-purple-700', items: data.mcq }, { id: 'skill', title: 'Skill Development', icon: 'fa-laptop-code', color: 'bg-indigo-700', items: data.skills }, { id: 'vocab', title: 'Vocab', icon: 'fa-language', color: 'bg-emerald-700', items: data.vocab } ].map(m => ( <div key={m.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all hover:-translate-y-1 border border-gray-100 dark:border-gray-700"> <div className={`${m.color} p-4 text-white text-center relative overflow-hidden`}> <div className="absolute top-0 right-0 p-4 opacity-10 transform scale-150"><i className={`fas ${m.icon} text-6xl`}></i></div> <div className="flex items-center justify-center gap-3 relative z-10"><i className={`fas ${m.icon} text-2xl`}></i><h3 className="text-lg font-bold">{m.title}</h3></div> </div> <RenderDeckList items={m.items} mId={m.id} /> </div> ))}
+                                        {[ { id: 'study', title: 'Knowledge Base', icon: 'fa-book-open', color: 'bg-teal-700', items: data.study }, { id: 'flashcard', title: 'Concept Drill', icon: 'fa-layer-group', color: 'bg-orange-600', items: data.flashcards }, { id: 'type', title: 'Mock Interview', icon: 'fa-keyboard', color: 'bg-blue-700', items: data.type }, { id: 'mcq', title: 'Technical Quiz', icon: 'fa-tasks', color: 'bg-purple-700', items: data.mcq }, { id: 'skill', title: 'Skill Development', icon: 'fa-laptop-code', color: 'bg-indigo-700', items: data.skills }, { id: 'vocab', title: 'Industry Terms', icon: 'fa-language', color: 'bg-emerald-700', items: data.vocab } ].map(m => ( <div key={m.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all hover:-translate-y-1 border border-gray-100 dark:border-gray-700"> <div className={`${m.color} p-4 text-white text-center relative overflow-hidden`}> <div className="absolute top-0 right-0 p-4 opacity-10 transform scale-150"><i className={`fas ${m.icon} text-6xl`}></i></div> <div className="flex items-center justify-center gap-3 relative z-10"><i className={`fas ${m.icon} text-2xl`}></i><h3 className="text-lg font-bold">{m.title}</h3></div> </div> <RenderDeckList items={m.items} mId={m.id} /> </div> ))}
                                     </div></div>
                                     <div className="hidden md:flex fixed bottom-6 right-6 flex-col gap-3 z-50 items-end">
                                          <button onClick={() => setShowPrompts(true)} className="bg-jpm-primary text-white p-3 rounded-full shadow-lg hover:bg-jpm-dark transition flex items-center gap-2 group"><i className="fas fa-robot"></i> <span className="hidden group-hover:inline text-sm font-bold">Prompts</span></button>
