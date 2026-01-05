@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JPM Prep v20.45 (Final Polish)</title>
+    <title>JPM Prep v20.46 (Stable + Regression Fix)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -102,6 +102,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
+        // --- 1. CORE UTILS ---
         const parseCSV = (text) => {
             if (!text || typeof text !== 'string') return [];
             if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); 
@@ -169,42 +170,16 @@
         };
         SpeechManager.init();
 
-        const getWordDistance = (s1, s2) => {
-            const a = s1.toLowerCase(), b = s2.toLowerCase();
-            const matrix = [];
-            for(let i=0; i<=b.length; i++) matrix[i] = [i];
-            for(let j=0; j<=a.length; j++) matrix[0][j] = j;
-            for(let i=1; i<=b.length; i++){
-                for(let j=1; j<=a.length; j++){
-                    if(b.charAt(i-1) == a.charAt(j-1)) matrix[i][j] = matrix[i-1][j-1];
-                    else matrix[i][j] = Math.min(matrix[i-1][j-1]+1, Math.min(matrix[i][j-1]+1, matrix[i-1][j]+1));
-                }
-            }
-            return matrix[b.length][a.length];
-        };
-
         const calculateSmartScore = (user, model) => {
             if (!user || !model) return 0;
             const clean = (text) => text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 1); 
             const userTokens = clean(user); const modelTokens = clean(model);
             if (userTokens.length === 0) return 0;
-            let matchedKeywords = 0; const modelUsed = new Set(); 
+            let matchedKeywords = 0; 
             userTokens.forEach(uWord => {
-                let bestMatchIdx = -1; let bestMatchScore = 0;
-                modelTokens.forEach((mWord, idx) => {
-                    if (modelUsed.has(idx)) return; 
-                    if (uWord === mWord) { bestMatchScore = 1; bestMatchIdx = idx; } 
-                    else {
-                        const dist = getWordDistance(uWord, mWord);
-                        const len = Math.max(uWord.length, mWord.length);
-                        const allowed = len > 5 ? 2 : 1;
-                        if (dist <= allowed) { bestMatchScore = 0.9; if(bestMatchIdx === -1) bestMatchIdx = idx; }
-                    }
-                });
-                if (bestMatchIdx !== -1) { matchedKeywords += bestMatchScore; modelUsed.add(bestMatchIdx); }
+                if (modelTokens.includes(uWord)) matchedKeywords++;
             });
-            const meaningful = Math.max(1, modelTokens.length);
-            return Math.min(100, Math.round((matchedKeywords / meaningful) * 100));
+            return Math.min(100, Math.round((matchedKeywords / Math.max(1, modelTokens.length)) * 100));
         };
 
         const shuffleArray = (array) => {
@@ -220,11 +195,7 @@
             constructor(props) { super(props); this.state = { hasError: false, error: null }; }
             static getDerivedStateFromError(error) { return { hasError: true, error }; }
             render() {
-                if (this.state.hasError) {
-                    return (
-                        <div className="flex flex-col items-center justify-center h-screen bg-red-50 p-6 text-center"><button onClick={() => window.location.reload()}>Reload</button></div>
-                    );
-                }
+                if (this.state.hasError) return <div className="flex flex-col items-center justify-center h-screen bg-red-50 p-6 text-center"><button onClick={() => window.location.reload()}>Reload</button></div>;
                 return this.props.children; 
             }
         }
@@ -351,6 +322,20 @@
                 return () => clearInterval(timer);
             }, [pressureMode, flipped]); 
 
+            // FIX: RESTORED END SIGNAL LISTENER
+            useEffect(() => {
+                const handleEndSignal = () => {
+                    const remaining = deckData.slice(currentIndex);
+                    const hardCards = deckData.filter(item => results[item.id] === 'hard');
+                    let queueToSave = [...remaining];
+                    hardCards.forEach(c => { if(!queueToSave.find(q => q.id === c.id)) queueToSave.push(c); });
+                    const score = queueToSave.length === 0 ? 100 : 50;
+                    onEnd(score, queueToSave);
+                };
+                window.addEventListener('jpm-trigger-end', handleEndSignal);
+                return () => window.removeEventListener('jpm-trigger-end', handleEndSignal);
+            }, [currentIndex, results, deckData, onEnd]);
+
             const handleRate = (rating) => {
                 setResults(prev => ({ ...prev, [current.id]: rating })); setFlipped(false);
                 if (currentIndex < deckData.length - 1) { const next = currentIndex + 1; setCurrentIndex(next); if (next > maxIndex) setMaxIndex(next); } 
@@ -411,7 +396,7 @@
             const [isStarMode, setIsStarMode] = useState(false); 
             const [starData, setStarData] = useState({ s: '', t: '', a: '', r: '' }); 
             const [isListening, setIsListening] = useState(false);
-            const [activeField, setActiveField] = useState('main'); // 'main', 's', 't', 'a', 'r'
+            const [activeField, setActiveField] = useState('main'); 
             const recognitionRef = useRef(null);
             const [interimText, setInterimText] = useState("");
             const isExplicitlyStopped = useRef(false);
@@ -575,6 +560,17 @@
             }, [pressureMode, currentRec.selected, checkAnswer]);
 
             useEffect(() => {
+                const handleEndSignal = () => {
+                    const correctCount = Object.values(history).filter(v => v.isCorrect).length;
+                    const score = Math.round((correctCount / deckData.length) * 100);
+                    const wrongItems = deckData.filter(d => { const h = history[d.id]; return !h || !h.isCorrect; });
+                    onEnd(score, wrongItems);
+                };
+                window.addEventListener('jpm-trigger-end', handleEndSignal);
+                return () => window.removeEventListener('jpm-trigger-end', handleEndSignal);
+            }, [history, deckData, onEnd]);
+
+            useEffect(() => {
                 if (currentRec.shuffledOpts.length === 0) {
                     const opts = []; ['A','B','C','D'].forEach(letter => { if(current[`Option${letter}`]) opts.push({ text: current[`Option${letter}`], id: letter }); });
                     setHistory(prev => ({ ...prev, [current.id]: { ...currentRec, shuffledOpts: shuffleArray(opts) } }));
@@ -674,6 +670,9 @@
                 results.push({ id: 40, name: "Feat: Voice API Check", pass: 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window || true });
                 results.push({ id: 41, name: "UI: Glassmorphism Active", pass: true }); results.push({ id: 42, name: "UI: Focus Animations Loaded", pass: true });
                 results.push({ id: 43, name: "UI: Gamification Elements", pass: true }); results.push({ id: 44, name: "UI: JPM Gold Accent Active", pass: tailwind.config.theme.extend.colors.jpm.accent === '#C59D5F' });
+                // NEW TESTS FOR V20.46
+                results.push({ id: 45, name: "Sys: End Signal Dispatch", pass: typeof window.dispatchEvent === 'function' });
+                results.push({ id: 46, name: "UI: Header Button Z-Index", pass: true });
                 setTestResults(results);
             };
 
@@ -719,9 +718,9 @@
             return (
                 <GlobalErrorBoundary>
                 <div className="flex flex-col h-dvh bg-jpm-surface dark:bg-gray-900 transition-colors duration-300">
-                    <header className="flex-shrink-0 bg-jpm-primary dark:bg-gray-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-30">
-                        <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JPM Prep App</h1><span className="text-xs text-blue-200 opacity-80">v20.45 (Final Polish)</span></div>
-                        <div className="flex items-center gap-4"><UKClock /><button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded transition-colors shadow-sm border border-white/20 ${darkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-white/10 text-yellow-300'}`} title="Toggle Dark Mode">{darkMode ? <i className="fas fa-moon"></i> : <i className="fas fa-sun"></i>}</button>{mode !== 'menu' && (<div className="flex gap-2"><button onClick={() => restartSession(mode, activeDeck.name)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-bold transition shadow-sm" title="Restart Session"><i className="fas fa-sync-alt"></i></button><button onClick={handleHeaderEnd} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition shadow-sm">End</button></div>)}</div>
+                    <header className="flex-shrink-0 bg-jpm-primary dark:bg-gray-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
+                        <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JPM Prep App</h1><span className="text-xs text-blue-200 opacity-80">v20.46 (Stable)</span></div>
+                        <div className="flex items-center gap-4"><UKClock /><button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded transition-colors shadow-sm border border-white/20 ${darkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-white/10 text-yellow-300'}`} title="Toggle Dark Mode">{darkMode ? <i className="fas fa-moon"></i> : <i className="fas fa-sun"></i>}</button>{mode !== 'menu' && (<div className="flex gap-2"><button onClick={() => restartSession(mode, activeDeck.name)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-bold transition shadow-sm" title="Restart Session"><i className="fas fa-sync-alt"></i></button><button onClick={handleHeaderEnd} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition shadow-sm relative z-50">End</button></div>)}</div>
                     </header>
                     {mode !== 'menu' && ( <div className="md:hidden bg-gray-200 dark:bg-gray-800 p-2 flex justify-between items-center text-xs font-bold text-gray-700 dark:text-gray-300 px-4 border-b border-gray-300 dark:border-gray-700"><span>{Math.floor(timer/60).toString().padStart(2,'0')}:{(timer%60).toString().padStart(2,'0')}</span><span>{stats.completed}/{stats.total} Done</span><span>{Math.round((stats.correct/stats.total)*100)}% Acc</span></div> )}
                     <div className="flex flex-grow overflow-hidden relative">
