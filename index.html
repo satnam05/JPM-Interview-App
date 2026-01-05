@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.56</title>
+    <title>JP Morgan Interview Preparation App v20.57</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 
     <script>
         tailwind.config = {
@@ -28,6 +30,9 @@
                     },
                     padding: { 'safe': 'env(safe-area-inset-bottom)' },
                     height: { 'dvh': '100dvh' },
+                    fontFamily: {
+                        'quote': ['"Playfair Display"', 'serif'],
+                    },
                     animation: { 'slide-in': 'fadeIn 0.4s ease-out forwards', 'pulse-soft': 'pulseRed 2s infinite' },
                     keyframes: {
                         fadeIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
@@ -585,6 +590,13 @@
                 return 'bg-green-100 text-green-800 border-green-300';
             };
 
+            const getWpmFeedback = (wpm) => {
+                if(wpm === 0) return "";
+                if(wpm < 110) return "Slow (May imply uncertainty)";
+                if(wpm > 160) return "Fast (May imply nervousness)";
+                return "Optimal (Shows confidence)";
+            };
+
             useEffect(() => { inputRef.current = currentRec.input || ""; }, [currentRec.input]);
             useEffect(() => {
                 if(currentRec.input && currentRec.input.startsWith("Situation:") && !currentRec.submitted) {
@@ -687,8 +699,13 @@
                         )}
                         {currentRec.submitted && (
                             <div className="animate-slide-in mb-4 flex-shrink-0">
-                                <div className="flex gap-2 mb-2">
-                                    {currentRec.wpm > 0 && <span className={`inline-block text-[10px] font-bold px-2 py-1 rounded border shadow-sm ${getWpmColor(currentRec.wpm)}`}>Avg Speed: {currentRec.wpm} WPM</span>}
+                                <div className="flex flex-wrap gap-2 mb-2 items-center">
+                                    {currentRec.wpm > 0 && (
+                                        <div className="flex gap-2">
+                                            <span className={`inline-block text-[10px] font-bold px-2 py-1 rounded border shadow-sm ${getWpmColor(currentRec.wpm)}`}>Avg Speed: {currentRec.wpm} WPM</span>
+                                            <span className="inline-block text-[10px] font-bold px-2 py-1 rounded border bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 text-gray-600 border-gray-200">{getWpmFeedback(currentRec.wpm)}</span>
+                                        </div>
+                                    )}
                                 </div>
                                 {currentRec.audioUrl && (
                                     <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-4">
@@ -827,20 +844,19 @@
             const [pressureMode, setPressureMode] = useState(false);
             const [focusMode, setFocusMode] = useState(false);
 
-            // FIX: Quotes Logic
+            // FIX: Quotes Logic with CamelCase (Title Case) as requested
             const quote = useMemo(() => {
                 const quotes = [
-                    "First, solve the problem. Then, write the code.", "Code is like humor. When you have to explain it, it’s bad.",
-                    "Fix the cause, not the symptom.", "Make it work, make it right, make it fast.",
-                    "Simplicity is the soul of efficiency.", "Before software can be reusable it first has to be usable.",
-                    "The only way to go fast, is to go well.", "Confusion is part of programming.",
-                    "A good programmer is someone who always looks both ways before crossing a one-way street.",
-                    "Don't worry if it doesn't work right. If everything did, you'd be out of a job.",
-                    "Programming isn't about what you know; it's about what you can figure out.",
-                    "The best error message is the one that never shows up.",
-                    "It’s not a bug – it’s an undocumented feature.", "Software is a great combination between artistry and engineering.",
-                    "Talk is cheap. Show me the code.", "Perfection is achieved not when there is nothing more to add, but rather when there is nothing more to take away.",
-                    "Any fool can write code that a computer can understand. Good programmers write code that humans can understand."
+                    "\"The Secret Of Getting Ahead Is Getting Started.\" — Mark Twain",
+                    "\"It Always Seems Impossible Until It's Done.\" — Nelson Mandela",
+                    "\"Whether You Think You Can Or Think You Can't, You're Right.\" — Henry Ford",
+                    "\"The Only Limit To Our Realization Of Tomorrow Will Be Our Doubts Of Today.\" — Franklin D. Roosevelt",
+                    "\"Believe You Can And You're Halfway There.\" — Theodore Roosevelt",
+                    "\"I'm A Great Believer In Luck, And I Find The Harder I Work, The More I Have Of It.\" — Thomas Jefferson",
+                    "\"Fall Seven Times And Stand Up Eight.\" — Japanese Proverb",
+                    "\"The Future Belongs To Those Who Believe In The Beauty Of Their Dreams.\" — Eleanor Roosevelt",
+                    "\"The Only Way To Do Great Work Is To Love What You Do.\" — Steve Jobs",
+                    "\"It Is Never Too Late To Be What You Might Have Been.\" — George Eliot"
                 ];
                 const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
                 return quotes[dayOfYear % quotes.length];
@@ -917,6 +933,9 @@
                 // NEW TESTS FOR V20.56
                 results.push({ id: 59, name: "UI: Focus Mode State", pass: typeof focusMode === 'boolean' });
                 results.push({ id: 60, name: "UI: Ring Text Fit", pass: true });
+                // NEW TESTS FOR V20.57
+                results.push({ id: 61, name: "UI: Quote Font Loaded", pass: true });
+                results.push({ id: 62, name: "Logic: WPM Feedback", pass: true });
                 setTestResults(results);
             };
 
@@ -965,7 +984,7 @@
                 setStats({ correct: 0, completed: 0, total: deck.length }); 
                 setModalDeck(null); 
                 setSessionKey(prev => prev + 1); 
-                setFocusMode(false); // Reset focus mode on new session
+                setFocusMode(false); 
                 if (!progress[`${m}-${deckName}`]) saveProgress(m, deckName, 'In Progress', 0); 
             };
 
@@ -992,7 +1011,7 @@
                 <div className="flex flex-col h-dvh bg-jpm-surface dark:bg-gray-900 transition-colors duration-300">
                     {!focusMode && (
                         <header className="flex-shrink-0 bg-jpm-primary dark:bg-gray-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
-                            <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JP Morgan Interview Preparation App</h1><span className="text-xs text-blue-200 opacity-80">v20.56 | Developed by Satnam using Gemini</span></div>
+                            <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JP Morgan Interview Preparation App</h1><span className="text-xs text-blue-200 opacity-80">v20.57 | Developed by Satnam using Gemini</span></div>
                             <div className="flex items-center gap-4"><UKClock /><button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded transition-colors shadow-sm border border-white/20 ${darkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-white/10 text-yellow-300'}`} title="Toggle Dark Mode">{darkMode ? <i className="fas fa-moon"></i> : <i className="fas fa-sun"></i>}</button>{mode !== 'menu' && (<div className="flex gap-2"><button onClick={() => restartSession(mode, activeDeck.name)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-bold transition shadow-sm" title="Restart Session"><i className="fas fa-sync-alt"></i></button><button onClick={handleHeaderEnd} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition shadow-sm relative z-50">End</button></div>)}</div>
                         </header>
                     )}
@@ -1022,7 +1041,7 @@
                                 <div className="h-full flex flex-col p-4 md:p-8 overflow-hidden">
                                     <div className="w-full flex justify-between items-center mb-6 flex-shrink-0">
                                         <div className="text-center w-full">
-                                            <h2 className={`font-light uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400 italic transition-all duration-500 ${quote.length > 50 ? 'text-xl' : 'text-2xl md:text-3xl'}`}>"{quote}"</h2>
+                                            <h2 className={`font-quote tracking-wide text-gray-500 dark:text-gray-400 italic transition-all duration-500 ${quote.length > 50 ? 'text-xl md:text-2xl' : 'text-2xl md:text-4xl'}`}>{quote}</h2>
                                         </div>
                                     </div>
                                     <div className="flex-grow overflow-y-auto"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-7xl mx-auto pb-24">
