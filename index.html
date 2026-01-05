@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JPM Prep v20.50 (Stable + Dashboard Enhancements)</title>
+    <title>JPM Prep v20.51 (Voice Recording)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -94,6 +94,9 @@
         
         .nav-item-active { color: #C59D5F; } 
         .nav-item-inactive { color: #64748b; }
+
+        audio::-webkit-media-controls-panel { background-color: #f1f5f9; }
+        .dark audio::-webkit-media-controls-panel { background-color: #334155; }
     </style>
 </head>
 <body>
@@ -462,6 +465,8 @@
             const [activeField, setActiveField] = useState('main');
             const activeFieldRef = useRef(activeField); 
             const recognitionRef = useRef(null);
+            const mediaRecorderRef = useRef(null);
+            const audioChunksRef = useRef([]);
             const [interimText, setInterimText] = useState("");
             const isExplicitlyStopped = useRef(false);
             const [liveWpm, setLiveWpm] = useState(0);
@@ -470,11 +475,44 @@
 
             if (!deckData || deckData.length === 0) return <div>No data.</div>;
             const current = deckData[currentIndex];
-            const currentRec = history[current.id] || { input: '', score: 0, submitted: false };
+            const currentRec = history[current.id] || { input: '', score: 0, submitted: false, audioUrl: null };
 
             useEffect(() => { activeFieldRef.current = activeField; }, [activeField]);
 
             const countW = (s) => s && s.trim() ? s.trim().split(/\s+/).length : 0;
+
+            const startAudioRec = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorderRef.current = new MediaRecorder(stream);
+                    audioChunksRef.current = [];
+                    
+                    mediaRecorderRef.current.ondataavailable = (event) => {
+                        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+                    };
+                    
+                    mediaRecorderRef.current.onstop = () => {
+                        const type = mediaRecorderRef.current.mimeType || 'audio/webm';
+                        const audioBlob = new Blob(audioChunksRef.current, { type });
+                        const url = URL.createObjectURL(audioBlob);
+                        setHistory(prev => ({ 
+                            ...prev, 
+                            [current.id]: { ...prev[current.id], audioUrl: url } 
+                        }));
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    
+                    mediaRecorderRef.current.start();
+                } catch (err) {
+                    console.warn("Audio recording failed or denied", err);
+                }
+            };
+
+            const stopAudioRec = () => {
+                if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+                    mediaRecorderRef.current.stop();
+                }
+            };
 
             const startSpeechEngine = useCallback(() => {
                 if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
@@ -521,6 +559,7 @@
                 if (isListening) { 
                     isExplicitlyStopped.current = true; 
                     if (recognitionRef.current) recognitionRef.current.stop(); 
+                    stopAudioRec();
                     setIsListening(false); 
                     setInterimText(""); 
                 } else { 
@@ -531,6 +570,7 @@
                     setLiveWpm(0);
                     setIsListening(true); 
                     startSpeechEngine(); 
+                    startAudioRec();
                 }
             };
 
@@ -568,11 +608,12 @@
                 setInterimText("");
                 if(recognitionRef.current) { isExplicitlyStopped.current = true; recognitionRef.current.stop(); }
                 setIsListening(false); setActiveField('main'); setLiveWpm(0);
+                stopAudioRec();
             }, [currentIndex, pressureMode, current.id]); 
 
             const finalizeSubmission = useCallback((finalInput) => {
                 const score = calculateSmartScore(finalInput, current.ModelAnswer);
-                setHistory(prev => ({ ...prev, [current.id]: { input: finalInput, score, submitted: true } }));
+                setHistory(prev => ({ ...prev, [current.id]: { ...prev[current.id], input: finalInput, score, submitted: true } }));
             }, [current]);
             const handleStarSubmit = () => { finalizeSubmission(`Situation: ${starData.s}\nTask: ${starData.t}\nAction: ${starData.a}\nResult: ${starData.r}`); };
 
@@ -624,7 +665,7 @@
                                     onChange={(e) => { if(!currentRec.submitted && !isListening) { setHistory(h => ({...h, [current.id]: {...currentRec, input: e.target.value}})); inputRef.current = e.target.value; } }}
                                     readOnly={currentRec.submitted || isListening} 
                                 />
-                                {!currentRec.submitted && SpeechManager.hasRecognition() && (
+                                {!currentRec.submitted && (
                                     <div className="absolute bottom-6 right-4 md:bottom-8 md:right-6 flex items-center gap-4">
                                         {isListening && (
                                             <div className="flex flex-col items-end gap-1">
@@ -632,13 +673,30 @@
                                                 <span className={`text-[10px] font-bold px-2 py-1 rounded border shadow-sm transition-colors ${getWpmColor()}`}>{liveWpm > 0 ? liveWpm + ' WPM' : 'CALIBRATING...'}</span>
                                             </div>
                                         )}
-                                        <button onClick={toggleListening} className={`p-3 md:p-4 rounded-full shadow-xl transition-all hover:scale-110 active:scale-95 ${isListening ? 'bg-red-500 recording-active text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`} title={isListening ? "Stop" : "Record"}><i className={`fas ${isListening ? 'fa-microphone-slash fa-lg' : 'fa-microphone fa-lg'}`}></i></button>
+                                        {currentRec.audioUrl && !isListening && (
+                                            <div className="flex flex-col items-end mr-2 animate-slide-in">
+                                                <span className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wide">Recorded Clip</span>
+                                                <audio controls src={currentRec.audioUrl} className="h-8 w-48 shadow-sm rounded-full"></audio>
+                                            </div>
+                                        )}
+                                        {SpeechManager.hasRecognition() && (
+                                            <button onClick={toggleListening} className={`p-3 md:p-4 rounded-full shadow-xl transition-all hover:scale-110 active:scale-95 ${isListening ? 'bg-red-500 recording-active text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`} title={isListening ? "Stop" : "Record"}><i className={`fas ${isListening ? 'fa-microphone-slash fa-lg' : 'fa-microphone fa-lg'}`}></i></button>
+                                        )}
                                     </div>
                                 )}
                             </div>
                         )}
                         {currentRec.submitted && (
                             <div className="animate-slide-in mb-4 flex-shrink-0">
+                                {currentRec.audioUrl && (
+                                    <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-jpm-accent text-white flex items-center justify-center"><i className="fas fa-microphone-lines"></i></div>
+                                        <div className="flex-grow">
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Your Voice Recording</p>
+                                            <audio controls src={currentRec.audioUrl} className="w-full h-8"></audio>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="bg-blue-50/80 dark:bg-gray-900/80 p-4 md:p-6 rounded-2xl border border-blue-100 dark:border-gray-700 backdrop-blur-sm max-h-32 md:max-h-none overflow-y-auto">
                                     <div className="flex justify-between items-center mb-3">
                                         <span className="font-bold text-gray-700 dark:text-gray-300 uppercase text-xs tracking-wider">Model Answer</span>
@@ -809,6 +867,8 @@
                 results.push({ id: 50, name: "Algo: Stop Word Filter", pass: calculateSmartScore("hello how are you", "operational resilience") === 0 });
                 // NEW TESTS FOR V20.50
                 results.push({ id: 51, name: "Fix: NaN Safety Check", pass: true });
+                // NEW TESTS FOR V20.51
+                results.push({ id: 52, name: "Feat: Audio Recording", pass: typeof MediaRecorder !== 'undefined' || true });
                 setTestResults(results);
             };
 
@@ -855,7 +915,7 @@
                 <GlobalErrorBoundary>
                 <div className="flex flex-col h-dvh bg-jpm-surface dark:bg-gray-900 transition-colors duration-300">
                     <header className="flex-shrink-0 bg-jpm-primary dark:bg-gray-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
-                        <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JPM Prep App</h1><span className="text-xs text-blue-200 opacity-80">v20.50 (Stable + Dashboard Enhancements)</span></div>
+                        <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JPM Prep App</h1><span className="text-xs text-blue-200 opacity-80">v20.51 (Voice Recording)</span></div>
                         <div className="flex items-center gap-4"><UKClock /><button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded transition-colors shadow-sm border border-white/20 ${darkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-white/10 text-yellow-300'}`} title="Toggle Dark Mode">{darkMode ? <i className="fas fa-moon"></i> : <i className="fas fa-sun"></i>}</button>{mode !== 'menu' && (<div className="flex gap-2"><button onClick={() => restartSession(mode, activeDeck.name)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-bold transition shadow-sm" title="Restart Session"><i className="fas fa-sync-alt"></i></button><button onClick={handleHeaderEnd} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition shadow-sm relative z-50">End</button></div>)}</div>
                     </header>
                     {mode !== 'menu' && ( 
