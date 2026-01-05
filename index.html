@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JPM Prep v20.52 (Fixed & Restored UI)</title>
+    <title>JPM Prep v20.53 (Golden Master)</title>
     
     <script>
         window.onerror = function(msg, url, line, col, error) {
@@ -65,7 +65,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-        // --- 1. CORE UTILS ---
+        // --- 1. UTILS ---
         const parseCSV = (text) => {
             if (!text || typeof text !== 'string') return [];
             if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); 
@@ -194,8 +194,25 @@
             return { isListening, start, stop };
         };
 
-        // --- 3. UI COMPONENTS (Restored & Fixed) ---
+        // --- 3. UI COMPONENTS ---
         
+        // RESTORED: GlobalErrorBoundary
+        class GlobalErrorBoundary extends React.Component {
+            constructor(props) { super(props); this.state = { hasError: false }; }
+            static getDerivedStateFromError(error) { return { hasError: true }; }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="flex flex-col items-center justify-center h-screen bg-red-50 p-6 text-center">
+                            <h2 className="text-2xl font-bold text-red-600 mb-4">Critical System Error</h2>
+                            <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-red-600 text-white px-6 py-3 rounded-lg font-bold">Factory Reset</button>
+                        </div>
+                    );
+                }
+                return this.props.children; 
+            }
+        }
+
         const ComponentSandbox = ({ children }) => (children);
 
         const UKClock = () => {
@@ -292,7 +309,7 @@
             );
         };
 
-        // --- 4. DECK LIST COMPONENT (FIX FOR REFERENCE ERROR) ---
+        // --- 4. DECK LIST COMPONENT ---
         const RenderDeckList = ({ items, mId, progress, onDeckClick, onStartSession, onMarkComplete }) => {
             const getDecks = (items) => [...new Set(items.map(i => i.Deck))].filter(Boolean);
             const decks = getDecks(items);
@@ -363,36 +380,62 @@
                 }
             };
 
+            const getBtnStyle = (type) => {
+                const isActive = currentRating === type;
+                const base = "flex-1 py-4 rounded-xl font-bold shadow-md transition-all duration-200 border-2";
+                if (type === 'hard') {
+                    return isActive 
+                        ? `${base} bg-red-600 border-red-800 ring-4 ring-red-300 scale-105 text-white shadow-xl z-10 opacity-100` 
+                        : `${base} bg-white border-red-200 text-red-600 hover:bg-red-50 ${currentRating ? 'opacity-40 grayscale' : 'opacity-100'}`;
+                } else {
+                    return isActive 
+                        ? `${base} bg-green-600 border-green-800 ring-4 ring-green-300 scale-105 text-white shadow-xl z-10 opacity-100` 
+                        : `${base} bg-white border-green-200 text-green-600 hover:bg-green-50 ${currentRating ? 'opacity-40 grayscale' : 'opacity-100'}`;
+                }
+            };
+
             return (
                 <div className="flex flex-col items-center h-full w-full px-4 pt-4 md:pb-safe scroll-touch stable-scroll dark:text-white">
                     <div className="w-full max-w-4xl flex justify-between mb-2 md:mb-4 text-gray-500 dark:text-gray-400 font-bold text-sm uppercase tracking-wide flex-shrink-0">
-                        <span>{current.ModeTitle || 'Flashcard'}</span>
-                        {pressureMode && !flipped && <span className="text-blue-500 font-mono">⏳ {timeLeft}</span>}
-                        <span>{currentIndex+1}/{deckData.length}</span>
+                        <span>{current.ModeTitle || 'Flashcard Mode'}</span>
+                        {pressureMode && !flipped && <span className={`font-mono ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-blue-500'}`}>⏳ 00:{timeLeft.toString().padStart(2,'0')}</span>}
+                        <span>{currentIndex + 1} / {deckData.length}</span>
                     </div>
-                    <div className="card-scene mb-0 md:mb-6 w-full max-w-4xl flex-grow relative flex flex-col" style={{minHeight: '0'}}>
-                        <div className={`card-object ${flipped ? 'is-flipped' : ''}`} onClick={() => setFlipped(!flipped)}>
+                    
+                    <div className="card-scene mb-4 md:mb-6 w-full max-w-4xl flex-grow md:h-full relative flex flex-col" style={{minHeight: '0'}}>
+                        <div className={`card-object ${flipped ? 'is-flipped' : ''}`} onClick={() => setFlipped(!flipped)} role="button">
                             <div className="card-face front">
                                 <div className="card-content relative">
-                                    <h3 className="text-2xl md:text-3xl font-bold leading-snug">{current.Question}</h3>
-                                    {isVocab && <button onClick={(e)=>{e.stopPropagation(); SpeechManager.speak(current.Question);}} className="absolute top-6 right-6 p-3 bg-blue-50 dark:bg-gray-800 rounded-full shadow hover:scale-110 text-jpm-primary dark:text-sky-400"><i className="fas fa-volume-up"></i></button>}
+                                    <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white leading-snug tracking-tight">{current.Question}</h3>
+                                    {isVocab && SpeechManager.hasSynthesis() && (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); SpeechManager.speak(current.Question); }} 
+                                            className="absolute top-6 right-6 text-jpm-primary hover:text-jpm-accent p-3 bg-blue-50 dark:bg-gray-800 rounded-full shadow-md transition-transform hover:scale-110"
+                                            title="Pronounce (UK)"
+                                        >
+                                            <i className="fas fa-volume-up"></i>
+                                        </button>
+                                    )}
                                 </div>
-                                <div className="absolute bottom-6 text-gray-400 text-xs font-bold uppercase tracking-widest">Tap to Flip</div>
+                                <div className="absolute bottom-6 text-gray-400 text-xs uppercase tracking-widest font-bold">Tap to Flip</div>
                             </div>
                             <div className="card-face back">
-                                <div className="card-content"><p className="text-xl whitespace-pre-wrap">{current.Answer}</p></div>
+                                <div className="card-content"><p className="text-xl text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{current.Answer}</p></div>
                             </div>
                         </div>
                     </div>
-                    <div className="w-full max-w-4xl z-10 flex gap-4 items-center flex-shrink-0 py-4 md:py-6 mt-auto">
-                        <button onClick={()=>{setCurrentIndex(Math.max(0,currentIndex-1)); setFlipped(false);}} disabled={currentIndex===0} className="px-6 py-4 bg-white dark:bg-gray-800 rounded-xl shadow disabled:opacity-50"><i className="fas fa-arrow-left"></i></button>
+
+                    <div className="w-full max-w-4xl z-10 flex gap-4 items-center flex-shrink-0 pb-20 md:pb-6">
+                        <button onClick={() => { setCurrentIndex(p => Math.max(0, p-1)); setFlipped(false); setTimeLeft(60); }} disabled={currentIndex === 0} className="px-6 py-4 bg-white dark:bg-gray-800 text-gray-600 dark:text-white rounded-xl font-bold shadow-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"><i className="fas fa-arrow-left"></i></button>
                         {flipped ? (
                             <div className="flex-1 flex gap-4">
-                                <button onClick={(e)=>{e.stopPropagation(); rate('hard');}} className="flex-1 py-4 bg-red-100 text-red-700 font-bold rounded-xl border border-red-300">Hard</button>
-                                <button onClick={(e)=>{e.stopPropagation(); rate('easy');}} className="flex-1 py-4 bg-green-100 text-green-700 font-bold rounded-xl border border-green-300">Easy</button>
+                                <button onClick={(e) => { e.stopPropagation(); handleRate('hard'); }} className={getBtnStyle('hard')}>{currentRating === 'hard' && <i className="fas fa-check mr-2"></i>} Hard</button>
+                                <button onClick={(e) => { e.stopPropagation(); handleRate('easy'); }} className={getBtnStyle('easy')}>{currentRating === 'easy' && <i className="fas fa-check mr-2"></i>} Easy</button>
                             </div>
-                        ) : (<button onClick={()=>setFlipped(true)} className="flex-1 py-4 bg-jpm-primary text-white font-bold rounded-xl shadow">Show Answer</button>)}
-                        <button onClick={()=>{if(currentIndex<deckData.length-1){setCurrentIndex(currentIndex+1); setFlipped(false);}}} disabled={currentIndex>=deckData.length-1} className="px-6 py-4 bg-white dark:bg-gray-800 rounded-xl shadow disabled:opacity-50"><i className="fas fa-arrow-right"></i></button>
+                        ) : (
+                            <button onClick={() => setFlipped(true)} className="flex-1 px-8 py-4 bg-jpm-primary text-white rounded-xl font-bold shadow-lg hover:bg-jpm-dark transition active:scale-95 transform">Show Answer</button>
+                        )}
+                        <button onClick={() => { const n=currentIndex+1; if(n<=maxIndex) setCurrentIndex(n); setFlipped(false); setTimeLeft(60); }} disabled={currentIndex >= maxIndex} className="px-6 py-4 bg-white dark:bg-gray-800 text-gray-600 dark:text-white rounded-xl font-bold shadow-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"><i className="fas fa-arrow-right"></i></button>
                     </div>
                 </div>
             );
@@ -405,19 +448,22 @@
             const inputRef = useRef(""); 
             const [isStarMode, setIsStarMode] = useState(false); 
             const [starData, setStarData] = useState({ s: '', t: '', a: '', r: '' }); 
-            const [input, setInput] = useState("");
-            const [interim, setInterim] = useState("");
-            
+            const [isListening, setIsListening] = useState(false);
+            const recognitionRef = useRef(null);
+            const [interimText, setInterimText] = useState("");
+            const isExplicitlyStopped = useRef(false);
+
+            if (!deckData || deckData.length === 0) return <div>No data.</div>;
+            const current = deckData[currentIndex];
+            const currentRec = history[current.id] || { input: '', score: 0, submitted: false };
+
             const [activeField, setActiveField] = useState('main'); 
             const activeFieldRef = useRef('main'); 
 
             useEffect(() => { activeFieldRef.current = activeField; }, [activeField]);
 
-            const current = deckData[currentIndex];
-            const currentRec = history[current.id] || { input: '', score: 0, submitted: false };
-
             const handleSpeechResult = useCallback((final, interimTxt) => {
-                setInterim(interimTxt);
+                setInterimText(interimTxt);
                 if (final) {
                     const field = activeFieldRef.current;
                     if (field === 'main') {
@@ -425,20 +471,17 @@
                     } else {
                         setStarData(prev => ({...prev, [field]: (prev[field] + ' ' + final).trim() }));
                     }
-                    setInterim("");
+                    setInterimText("");
                 }
             }, []); 
 
-            const { isListening, start, stop } = useSpeech(handleSpeechResult);
-            const toggleListen = () => isListening ? stop() : start();
+            const { isListening: hookListening, start, stop } = useSpeech(handleSpeechResult);
+            // Sync local state for UI updates
+            useEffect(() => { setIsListening(hookListening); }, [hookListening]);
 
-            useEffect(() => {
-                setInput(history[current.id]?.input || "");
-                setStarData({ s: '', t: '', a: '', r: '' });
-                if(pressureMode) setTimeLeft(60);
-                setActiveField('main');
-                stop(); 
-            }, [currentIndex, current.id]); 
+            const toggleListening = () => {
+                if (isListening) { stop(); } else { start(); }
+            };
 
             const submit = (txt) => {
                 stop(); 
@@ -462,29 +505,45 @@
             }, [pressureMode, currentRec.submitted, isListening, isStarMode, starData, input]); 
 
             useEffect(() => {
-                const handler = () => {
-                    const avg = Object.values(history).reduce((a,b)=>a+b.score,0) / deckData.length;
-                    onEnd(Math.round(avg || 0), deckData.filter(d => (history[d.id]?.score||0)<50));
+                const handleEndSignal = () => {
+                     const avg = Object.values(history).reduce((a,b)=>a+b.score,0) / deckData.length;
+                     const wrongItems = deckData.filter(d => (history[d.id]?.score || 0) < 50);
+                     onEnd(Math.round(avg || 0), wrongItems);
                 };
-                window.addEventListener('jpm-trigger-end', handler);
-                return () => window.removeEventListener('jpm-trigger-end', handler);
-            }, [history, deckData]);
+                window.addEventListener('jpm-trigger-end', handleEndSignal);
+                return () => window.removeEventListener('jpm-trigger-end', handleEndSignal);
+            }, [history, deckData, onEnd]);
 
             useEffect(() => {
-                onStatsUpdate({ completed: Object.keys(history).filter(k=>history[k].submitted).length, correct: Object.values(history).filter(r=>r.score>=50).length });
-            }, [history]);
+                const done = Object.keys(history).filter(k => history[k].submitted).length;
+                const correct = Object.values(history).filter(rec => rec.score >= 50).length;
+                onStatsUpdate({ completed: done, correct });
+            }, [history, onStatsUpdate]);
+
+            const handleNext = () => {
+                if (currentIndex < deckData.length - 1) { setCurrentIndex(prev => prev + 1); } 
+                else {
+                    const avg = Object.values(history).reduce((a,b)=>a+b.score,0) / deckData.length;
+                    const wrongItems = deckData.filter(d => (history[d.id]?.score || 0) < 50);
+                    onEnd(avg, wrongItems);
+                }
+            };
 
             return (
-                <div className="max-w-4xl mx-auto w-full pt-4 px-4 h-full flex flex-col pb-0 md:pb-safe scroll-touch stable-scroll">
+                <div className="max-w-4xl mx-auto w-full pt-4 px-4 h-full flex flex-col pb-20 md:pb-safe scroll-touch stable-scroll">
                     <div className="glass-panel rounded-3xl shadow-xl p-4 md:p-8 flex-grow flex flex-col min-h-0 mb-4">
                         <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                            <span className="text-jpm-accent font-bold text-xs uppercase block">Q{currentIndex+1}/{deckData.length}</span>
+                            <span className="text-jpm-accent font-bold text-xs uppercase tracking-widest block">Q{currentIndex + 1}/{deckData.length}</span>
                             <div className="flex gap-4 items-center">
-                                {!currentRec.submitted && <button onClick={() => setIsStarMode(!isStarMode)} className={`text-xs font-bold px-3 py-1.5 rounded-full border transition ${isStarMode ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'}`}>✨ S.T.A.R.</button>}
-                                {pressureMode && !currentRec.submitted && <span className="font-mono text-sm font-bold text-blue-500">⏳ {timeLeft}</span>}
+                                {!currentRec.submitted && (
+                                    <button onClick={() => setIsStarMode(!isStarMode)} className={`text-xs font-bold px-3 py-1.5 rounded-full border transition ${isStarMode ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-gray-100 text-gray-500'}`}>
+                                        ✨ S.T.A.R.
+                                    </button>
+                                )}
+                                {pressureMode && !currentRec.submitted && <span className={`font-mono text-sm font-bold ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-blue-500'}`}>⏳ 00:{timeLeft.toString().padStart(2,'0')}</span>}
                             </div>
                         </div>
-                        <h2 className="text-lg md:text-2xl font-bold dark:text-white mb-4 leading-relaxed flex-shrink-0">{current.Question}</h2>
+                        <h2 className="text-lg md:text-2xl font-bold text-gray-800 dark:text-white mb-4 leading-relaxed flex-shrink-0">{current.Question}</h2>
                         
                         {!currentRec.submitted && isStarMode ? (
                             <div className="flex-grow flex flex-col gap-3 overflow-y-auto min-h-0 relative">
@@ -493,11 +552,11 @@
                                         onFocus={() => setActiveField(k)} 
                                         className={`w-full p-3 border-l-4 ${activeField===k ? 'ring-2 ring-blue-300 border-blue-600' : 'border-gray-300'} bg-white/50 dark:bg-gray-700/50 dark:text-white rounded-lg resize-none h-24 transition-all`}
                                         placeholder={`${k.toUpperCase()}...`} 
-                                        value={starData[k] + (activeField===k ? interim : '')} 
+                                        value={starData[k] + (activeField===k ? interimText : '')} 
                                         onChange={e => setStarData({...starData, [k]: e.target.value})} 
                                     />
                                 ))}
-                                <button onClick={toggleListen} className={`absolute bottom-4 right-4 z-20 p-4 rounded-full shadow-xl ${isListening ? 'bg-red-500 recording-active text-white' : 'bg-white text-gray-600'}`}>
+                                <button onClick={toggleListening} className={`absolute bottom-4 right-4 z-20 p-4 rounded-full shadow-xl ${isListening ? 'bg-red-500 recording-active text-white' : 'bg-white text-gray-600'}`}>
                                     <i className={`fas ${isListening ? 'fa-microphone-slash' : 'fa-microphone'}`}></i>
                                 </button>
                             </div>
@@ -507,12 +566,12 @@
                                     onFocus={() => setActiveField('main')}
                                     className="w-full p-6 border-2 rounded-2xl mb-4 flex-grow resize-none text-lg bg-white/60 dark:bg-gray-800/60 dark:text-white"
                                     placeholder="Type answer or speak..." 
-                                    value={currentRec.submitted ? currentRec.input : (input + (activeField==='main' ? interim : ''))}
+                                    value={currentRec.submitted ? currentRec.input : (input + (activeField==='main' ? interimText : ''))}
                                     onChange={e => !currentRec.submitted && setInput(e.target.value)}
                                     readOnly={currentRec.submitted} 
                                 />
                                 {!currentRec.submitted && (
-                                    <button onClick={toggleListen} className={`absolute bottom-6 right-6 p-4 rounded-full shadow-xl ${isListening ? 'bg-red-500 recording-active text-white' : 'bg-white text-gray-600'}`}>
+                                    <button onClick={toggleListening} className={`absolute bottom-6 right-6 p-4 rounded-full shadow-xl ${isListening ? 'bg-red-500 recording-active text-white' : 'bg-white text-gray-600'}`}>
                                         <i className={`fas ${isListening ? 'fa-microphone-slash' : 'fa-microphone'}`}></i>
                                     </button>
                                 )}
@@ -564,13 +623,13 @@
             }, [pressureMode, currentRec.selected]);
 
             useEffect(() => {
-                const handler = () => {
+                const handleEndSignal = () => {
                     const wrong = deckData.filter(d => !history[d.id]?.isCorrect);
                     const score = Math.round(((deckData.length - wrong.length) / deckData.length) * 100);
                     onEnd(score, wrong);
                 };
-                window.addEventListener('jpm-trigger-end', handler);
-                return () => window.removeEventListener('jpm-trigger-end', handler);
+                window.addEventListener('jpm-trigger-end', handleEndSignal);
+                return () => window.removeEventListener('jpm-trigger-end', handleEndSignal);
             }, [history, deckData]);
 
             const checkAnswer = (txt) => {
@@ -604,6 +663,7 @@
                                 <button key={i} onClick={() => !currentRec.selected && checkAnswer(opt.text)} className={`w-full text-left p-3 md:p-4 rounded-xl border-2 transition dark:text-white ${getStyle(opt.text)}`}><span className="font-mono mr-3 opacity-50">{String.fromCharCode(65+i)}.</span> {opt.text}</button>
                             ))}
                         </div>
+                        {currentRec.selected === "TIMEOUT" && <div className="mt-2 text-center text-red-500 font-bold text-sm">Time's Up!</div>}
                     </div>
                     <div className="flex gap-4 pb-6 z-10 flex-shrink-0 mt-auto">
                         <button onClick={() => {setCurrentIndex(Math.max(0,currentIndex-1)); setTimeLeft(60);}} disabled={currentIndex===0} className="px-6 py-3 bg-white dark:bg-gray-800 rounded-xl shadow disabled:opacity-50"><i className="fas fa-arrow-left"></i></button>
@@ -668,7 +728,6 @@
 
             const markStudyComplete = (mId, deckName) => { saveProgress(mId, deckName, 'Completed', 100); };
             const updateStats = useCallback(({ completed, correct }) => { if(activeDeck) setStats({ total: activeDeck.items.length, completed, correct }); }, [activeDeck]);
-            const getDecks = (items) => [...new Set(items.map(i => i.Deck))].filter(Boolean);
             const handleExport = () => { const blob = new Blob([JSON.stringify(progress)], {type: "application/json"}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = "jpm_backup.json"; a.click(); };
             const handleImport = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const p = JSON.parse(e.target.result); setProgress(p); if(p._settings) setPressureMode(p._settings.pressureMode || false); localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(p)); alert("Import Successful!"); } catch(err) { alert("Invalid File"); } }; reader.readAsText(file); };
             const togglePressureMode = () => { const newVal = !pressureMode; setPressureMode(newVal); const newP = { ...progress, _settings: { ...(progress._settings || {}), pressureMode: newVal } }; setProgress(newP); localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(newP)); };
@@ -688,18 +747,16 @@
                 setTestResults(r);
             };
 
-            const getTotalDecks = () => { return (getDecks(data.flashcards).length + getDecks(data.type).length + getDecks(data.mcq).length + getDecks(data.study).length + getDecks(data.skills).length + getDecks(data.vocab).length); };
-
             return (
                 <GlobalErrorBoundary>
                     <div className="flex flex-col h-dvh bg-jpm-surface dark:bg-gray-900 transition-colors duration-300">
                         <header className="flex-shrink-0 bg-jpm-primary dark:bg-gray-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
-                            <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JPM Prep App</h1><span className="text-xs text-blue-200 opacity-80">v20.52 (Stable)</span></div>
+                            <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JPM Prep App</h1><span className="text-xs text-blue-200 opacity-80">v20.53 (Golden Master)</span></div>
                             <div className="flex items-center gap-4"><UKClock /><button onClick={()=>setDarkMode(!darkMode)} className="p-2"><i className={`fas ${darkMode?'fa-moon':'fa-sun'}`}></i></button>{mode!=='menu'&&<div className="flex gap-2"><button onClick={()=>restartSession(mode,activeDeck.name)} className="bg-blue-600 px-3 py-2 rounded font-bold"><i className="fas fa-sync"></i></button><button onClick={handleHeaderEnd} className="bg-red-500 px-4 py-2 rounded font-bold">End</button></div>}</div>
                         </header>
                         
                         <div className="flex flex-grow overflow-hidden relative">
-                            <Dashboard active={mode !== 'menu'} stats={stats} timer={timer} progressData={progress} streak={streak} totalDecks={getTotalDecks()} />
+                            <Dashboard active={mode !== 'menu'} stats={stats} timer={timer} progressData={progress} streak={streak} totalDecks={0} />
                             <main className={`flex-grow overflow-y-auto transition-all duration-300 relative ${mode!=='menu'?'md:ml-64':''} scroll-touch stable-scroll pb-16 md:pb-safe`}>
                                 {mode === 'menu' ? (
                                     <div className="h-full flex flex-col p-4 md:p-8 overflow-hidden">
@@ -720,9 +777,9 @@
                                     </div>
                                 ) : (
                                     <ComponentSandbox>
-                                        {mode==='flashcard'||mode==='vocab'?<FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} />:
-                                        mode==='type'?<TypeMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} />:
-                                        <MCQMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} />}
+                                        {mode==='flashcard'||mode==='vocab'?<FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={(s,q)=>saveProgress(mode,activeDeck.name,s===100?'Completed':'In Progress',s,q)||setMode('menu')} onStatsUpdate={setStats} pressureMode={pressureMode} />:
+                                        mode==='type'?<TypeMode key={sessionKey} deckData={activeDeck.items} onEnd={(s,q)=>saveProgress(mode,activeDeck.name,s>=50?'Completed':'In Progress',s,q)||setMode('menu')} onStatsUpdate={setStats} pressureMode={pressureMode} />:
+                                        <MCQMode key={sessionKey} deckData={activeDeck.items} onEnd={(s,q)=>saveProgress(mode,activeDeck.name,s>=50?'Completed':'In Progress',s,q)||setMode('menu')} onStatsUpdate={setStats} pressureMode={pressureMode} />}
                                     </ComponentSandbox>
                                 )}
                             </main>
