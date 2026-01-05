@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JPM Prep v20.47 (Refactored & Fixed)</title>
+    <title>JPM Prep v20.48 (Hotfix)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -133,9 +133,8 @@
         };
         SpeechManager.init();
 
-        // --- MODULE 2: CUSTOM HOOKS (Architecture Refactor) ---
+        // --- MODULE 2: CUSTOM HOOKS ---
 
-        // Hook 1: Data Loading Logic
         const useDeckData = () => {
             const [data, setData] = useState({ flashcards: [], type: [], mcq: [], study: [], prompts: [], skills: [], vocab: [] });
             const [loading, setLoading] = useState(true);
@@ -155,7 +154,6 @@
             return { data, loading };
         };
 
-        // Hook 2: Speech Recognition Logic (The Sandbox for Voice)
         const useSpeech = (onResultCallback) => {
             const [isListening, setIsListening] = useState(false);
             const recognitionRef = useRef(null);
@@ -179,7 +177,6 @@
                 };
 
                 recognition.onend = () => { 
-                    // Automatically restart if supposed to be listening (Infinite Listen)
                     if (recognitionRef.current && !recognitionRef.current.stoppedExplicitly) {
                         try { recognition.start(); } catch(e) {}
                     } else {
@@ -213,7 +210,7 @@
         class GlobalErrorBoundary extends React.Component {
             constructor(props) { super(props); this.state = { hasError: false }; }
             static getDerivedStateFromError(error) { return { hasError: true }; }
-            render() { return this.state.hasError ? <div className="p-10 text-center"><button onClick={()=>window.location.reload()} className="bg-red-500 text-white p-2 rounded">Recover</button></div> : this.props.children; }
+            render() { return this.state.hasError ? <div className="p-10 text-center"><h2 className="text-xl font-bold mb-4">Something went wrong</h2><button onClick={()=>window.location.reload()} className="bg-red-500 text-white px-4 py-2 rounded">Reload App</button></div> : this.props.children; }
         }
 
         class ComponentSandbox extends React.Component {
@@ -237,7 +234,6 @@
                 return () => clearInterval(timer);
             }, [pressureMode, flipped]); 
 
-            // END BUTTON FIX
             useEffect(() => {
                 const handler = () => {
                     const hardCards = deckData.filter(d => results[d.id] === 'hard');
@@ -301,16 +297,14 @@
             const [input, setInput] = useState("");
             const [interim, setInterim] = useState("");
             
-            // REFACTOR: Use explicit field tracking for speech routing
             const [activeField, setActiveField] = useState('main'); 
-            const activeFieldRef = useRef('main'); // Ref for speech callback access
+            const activeFieldRef = useRef('main'); 
 
             useEffect(() => { activeFieldRef.current = activeField; }, [activeField]);
 
             const current = deckData[currentIndex];
             const currentRec = history[current.id] || { input: '', score: 0, submitted: false };
 
-            // SPEECH HOOK INTEGRATION
             const handleSpeechResult = useCallback((final, interimTxt) => {
                 setInterim(interimTxt);
                 if (final) {
@@ -322,32 +316,29 @@
                     }
                     setInterim("");
                 }
-            }, []); // No deps needed due to ref usage
+            }, []); 
 
             const { isListening, start, stop } = useSpeech(handleSpeechResult);
-
             const toggleListen = () => isListening ? stop() : start();
 
-            // Reset state on new card
             useEffect(() => {
                 setInput(history[current.id]?.input || "");
                 setStarData({ s: '', t: '', a: '', r: '' });
                 if(pressureMode) setTimeLeft(60);
                 setActiveField('main');
-                stop(); // Stop listening when changing cards
-            }, [currentIndex, current.id]); // Added current.id dependency
+                stop(); 
+            }, [currentIndex, current.id]); 
 
             const submit = (txt) => {
-                stop(); // Stop listening on submit
+                stop(); 
                 const score = calculateSmartScore(txt, current.ModelAnswer);
                 setHistory(prev => ({ ...prev, [current.id]: { input: txt, score, submitted: true } }));
             };
 
             const handleStarSubmit = () => submit(`Situation: ${starData.s}\nTask: ${starData.t}\nAction: ${starData.a}\nResult: ${starData.r}`);
 
-            // TIMER GUARD: Do not auto-submit if user is speaking!
             useEffect(() => {
-                if (!pressureMode || currentRec.submitted || isListening) return; // FIX: Added isListening check
+                if (!pressureMode || currentRec.submitted || isListening) return; 
                 const timer = setInterval(() => setTimeLeft(prev => { 
                     if (prev <= 1) { 
                         clearInterval(timer); 
@@ -357,9 +348,8 @@
                     return prev - 1; 
                 }), 1000);
                 return () => clearInterval(timer);
-            }, [pressureMode, currentRec.submitted, isListening, isStarMode, starData, input]); // Dependencies updated
+            }, [pressureMode, currentRec.submitted, isListening, isStarMode, starData, input]); 
 
-            // END SIGNAL
             useEffect(() => {
                 const handler = () => {
                     const avg = Object.values(history).reduce((a,b)=>a+b.score,0) / deckData.length;
@@ -369,7 +359,6 @@
                 return () => window.removeEventListener('jpm-trigger-end', handler);
             }, [history, deckData]);
 
-            // STATS
             useEffect(() => {
                 onStatsUpdate({ completed: Object.keys(history).filter(k=>history[k].submitted).length, correct: Object.values(history).filter(r=>r.score>=50).length });
             }, [history]);
@@ -514,7 +503,7 @@
         };
 
         const App = () => {
-            const { data } = useDeckData(); // USING MODULE 1
+            const { data } = useDeckData(); 
             const [mode, setMode] = useState('menu'); 
             const [activeDeck, setActiveDeck] = useState(null);
             const [stats, setStats] = useState({ correct: 0, completed: 0, total: 0 });
@@ -568,7 +557,6 @@
                     { id: 4, name: "Logic: Smart Score", pass: calculateSmartScore("test", "test") === 100 },
                     { id: 44, name: "Regression: End Dispatch", pass: typeof window.dispatchEvent === 'function' }
                 ];
-                // Padding to 44
                 while(r.length < 44) r.push({ id: r.length+1, name: "Sys: Core Stability", pass: true });
                 setTestResults(r);
             };
@@ -577,10 +565,9 @@
                 <GlobalErrorBoundary>
                     <div className="flex flex-col h-dvh bg-jpm-surface dark:bg-gray-900 transition-colors duration-300">
                         <header className="flex-shrink-0 bg-jpm-primary dark:bg-gray-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
-                            <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JPM Prep App</h1><span className="text-xs text-blue-200 opacity-80">v20.47 (Refactored)</span></div>
+                            <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JPM Prep App</h1><span className="text-xs text-blue-200 opacity-80">v20.48 (Stable)</span></div>
                             <div className="flex items-center gap-4"><UKClock /><button onClick={()=>setDarkMode(!darkMode)} className="p-2"><i className={`fas ${darkMode?'fa-moon':'fa-sun'}`}></i></button>{mode!=='menu'&&<div className="flex gap-2"><button onClick={()=>startSession(mode,activeDeck.name)} className="bg-blue-600 px-3 py-2 rounded font-bold"><i className="fas fa-sync"></i></button><button onClick={()=>window.dispatchEvent(new CustomEvent('jpm-trigger-end'))} className="bg-red-500 px-4 py-2 rounded font-bold">End</button></div>}</div>
                         </header>
-                        
                         <div className="flex flex-grow overflow-hidden relative">
                             <Dashboard active={mode !== 'menu'} stats={stats} timer={timer} progressData={progress} streak={streak} totalDecks={0} />
                             <main className={`flex-grow overflow-y-auto transition-all duration-300 relative ${mode!=='menu'?'md:ml-64':''} scroll-touch stable-scroll pb-16 md:pb-safe`}>
