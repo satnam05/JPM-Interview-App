@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JPM Prep v20.48 (WPM Analytics)</title>
+    <title>JPM Prep v20.49 (Smart AI Scoring)</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -185,19 +185,60 @@
 
         const calculateSmartScore = (user, model) => {
             if (!user || !model) return 0;
-            const clean = (text) => text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 1); 
-            const userTokens = clean(user); const modelTokens = clean(model);
-            if (userTokens.length === 0) return 0;
-            let matchedKeywords = 0; 
-            userTokens.forEach(uWord => {
-                const hasMatch = modelTokens.some(mWord => {
+
+            const stopWords = new Set([
+                'a','an','the','is','are','was','were','be','been','being','to','of','and','in','on','at','for','by','with','about',
+                'as','into','like','through','after','over','between','out','against','during','without','before','under','around','among',
+                'hello','hi','hey','how','you','your','my','i','me','mine','we','us','our','they','them','their','it','its','this','that',
+                'these','those','what','where','when','who','why','which','can','could','would','should','will','shall','may','might','must',
+                'do','does','did','done','doing','have','has','had','having','go','goes','gone','going','get','gets','got','getting','make',
+                'makes','made','making','say','says','said','saying','know','knows','knew','knowing','think','thinks','thought','thinking',
+                'take','takes','took','taking','see','sees','saw','seeing','come','comes','came','coming','want','wants','wanted','wanting',
+                'look','looks','looked','looking','use','uses','used','using','find','finds','found','finding','give','gives','gave','giving',
+                'tell','tells','told','telling','work','works','worked','working','call','calls','called','calling','try','tries','tried','trying',
+                'ask','asks','asked','asking','need','needs','needed','needing','feel','feels','felt','feeling','become','becomes','became','becoming',
+                'leave','leaves','left','leaving','put','puts','putting','mean','means','meant','meaning','keep','keeps','kept','keeping','let','lets',
+                'begin','begins','began','beginning','seem','seems','seemed','seeming','help','helps','helped','helping','talk','talks','talked','talking',
+                'turn','turns','turned','turning','start','starts','started','starting','show','shows','showed','showing','hear','hears','heard','hearing',
+                'play','plays','played','playing','run','runs','ran','running','move','moves','moved','moving','live','lives','lived','living',
+                'believe','believes','believed','believing','bring','brings','brought','bringing','happen','happens','happened','happening'
+            ]);
+
+            const clean = (text) => text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 1);
+            
+            const userRaw = clean(user);
+            const modelRaw = clean(model);
+            
+            // Filter stop words to find 'Critical Keywords'
+            const userKeywords = userRaw.filter(w => !stopWords.has(w));
+            const modelKeywords = modelRaw.filter(w => !stopWords.has(w));
+            
+            if (modelKeywords.length === 0) return 0; // Model has no meaningful words (rare edge case)
+            if (userKeywords.length === 0) return 0; // User said only filler/gibberish
+
+            let matchedCount = 0;
+            
+            userKeywords.forEach(uWord => {
+                const hasMatch = modelKeywords.some(mWord => {
                     if (uWord === mWord) return true;
-                    if (Math.abs(uWord.length - mWord.length) > 2) return false;
-                    return levenshteinDistance(uWord, mWord) <= 2;
+                    // Only allow typos on longer words to prevent false positives on short gibberish
+                    if (uWord.length > 3 && mWord.length > 3) {
+                         if (Math.abs(uWord.length - mWord.length) > 2) return false;
+                         return levenshteinDistance(uWord, mWord) <= 2;
+                    }
+                    return false;
                 });
-                if (hasMatch) matchedKeywords++;
+                if (hasMatch) matchedCount++;
             });
-            return Math.min(100, Math.round((matchedKeywords / Math.max(1, modelTokens.length)) * 100));
+
+            // Calculate raw score based on Critical Keywords
+            let score = Math.round((matchedCount / modelKeywords.length) * 100);
+            
+            // CAP the score if critical matches are very low relative to model complexity
+            // (e.g., user said 1 keyword but model required 10)
+            if (matchedCount < 2 && modelKeywords.length > 5) return 0; 
+            
+            return Math.min(100, score);
         };
 
         const shuffleArray = (array) => {
@@ -759,6 +800,8 @@
                 results.push({ id: 48, name: "Fix: STAR State Restore", pass: true });
                 // NEW TESTS FOR V20.48
                 results.push({ id: 49, name: "Feat: WPM Analytics", pass: true });
+                // NEW TESTS FOR V20.49
+                results.push({ id: 50, name: "Algo: Stop Word Filter", pass: calculateSmartScore("hello how are you", "operational resilience") === 0 });
                 setTestResults(results);
             };
 
@@ -805,7 +848,7 @@
                 <GlobalErrorBoundary>
                 <div className="flex flex-col h-dvh bg-jpm-surface dark:bg-gray-900 transition-colors duration-300">
                     <header className="flex-shrink-0 bg-jpm-primary dark:bg-gray-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
-                        <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JPM Prep App</h1><span className="text-xs text-blue-200 opacity-80">v20.48 (WPM Analytics)</span></div>
+                        <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight">JPM Prep App</h1><span className="text-xs text-blue-200 opacity-80">v20.49 (Smart AI Scoring)</span></div>
                         <div className="flex items-center gap-4"><UKClock /><button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded transition-colors shadow-sm border border-white/20 ${darkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-white/10 text-yellow-300'}`} title="Toggle Dark Mode">{darkMode ? <i className="fas fa-moon"></i> : <i className="fas fa-sun"></i>}</button>{mode !== 'menu' && (<div className="flex gap-2"><button onClick={() => restartSession(mode, activeDeck.name)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-bold transition shadow-sm" title="Restart Session"><i className="fas fa-sync-alt"></i></button><button onClick={handleHeaderEnd} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold transition shadow-sm relative z-50">End</button></div>)}</div>
                     </header>
                     {mode !== 'menu' && ( <div className="md:hidden bg-gray-200 dark:bg-gray-800 p-2 flex justify-between items-center text-xs font-bold text-gray-700 dark:text-gray-300 px-4 border-b border-gray-300 dark:border-gray-700"><span>{Math.floor(timer/60).toString().padStart(2,'0')}:{(timer%60).toString().padStart(2,'0')}</span><span>{stats.completed}/{stats.total} Done</span><span>{Math.round((stats.correct/stats.total)*100)}% Acc</span></div> )}
