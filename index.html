@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.72</title>
+    <title>JP Morgan Interview Preparation App v20.73</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -225,7 +225,6 @@
             
             const uniqueWords = new Set(userKeywords);
             
-            // --- LOGIC HOTFIX v20.67: Precision Scoring for Short Answers ---
             if (userKeywords.length >= 2 && userKeywords.length <= 5 && uniqueWords.size >= 2) {
                 let precisionCount = 0;
                 userKeywords.forEach(w => {
@@ -235,7 +234,6 @@
                 if (precision >= 0.9) return 100; 
             }
 
-            // Fallback Gibberish Filter
             if (uniqueWords.size < 3 && modelKeywords.length > 5) return 0; 
 
             if (modelKeywords.length === 0) return 0; if (userKeywords.length === 0) return 0; 
@@ -252,11 +250,21 @@
         class GlobalErrorBoundary extends React.Component { constructor(props) { super(props); this.state = { hasError: false, error: null }; } static getDerivedStateFromError(error) { return { hasError: true, error }; } render() { if (this.state.hasError) return <div className="flex flex-col items-center justify-center h-screen bg-red-900 p-6 text-center text-white"><button onClick={() => window.location.reload()}>Reload</button></div>; return this.props.children; } }
         class ComponentSandbox extends React.Component { constructor(props) { super(props); this.state = { hasError: false }; } static getDerivedStateFromError(error) { return { hasError: true }; } render() { if (this.state.hasError) return <button onClick={() => window.location.reload()}>Reload</button>; return this.props.children; } }
 
+        // --- COMPONENTS DEFINED IN STRICT DEPENDENCY ORDER ---
+
+        // 1. Leaf Components (No dependencies)
         const UKClock = () => {
             const [timeData, setTimeData] = useState({ time: '', date: '' });
             useEffect(() => { const updateTime = () => { const now = new Date(); setTimeData({ time: now.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', second: '2-digit' }), date: now.toLocaleDateString('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'short', year: 'numeric' }) }); }; updateTime(); const timer = setInterval(updateTime, 1000); return () => clearInterval(timer); }, []);
             return ( <div className="text-right hidden md:block"> <p className="text-xs text-blue-200 font-bold uppercase font-mono tracking-widest"><i className="fas fa-map-marker-alt mr-1"></i>Edinburgh</p> <p className="text-sm font-mono font-bold text-gray-300">{timeData.date} <span className="text-jpm-accent">|</span> {timeData.time}</p> </div> );
         };
+
+        const CircularProgress = ({ value, color = "text-jpm-accent", size = 80, strokeWidth = 8, label }) => {
+            const radius = (size - strokeWidth) / 2; const circumference = radius * 2 * Math.PI; const offset = circumference - (value / 100) * circumference; const textSizeClass = value >= 100 ? "text-[10px] md:text-xs leading-none" : "text-sm md:text-base leading-none";
+            return ( <div className="flex flex-col items-center"> <div className="relative" style={{ width: size, height: size }}> <svg className="w-full h-full" viewBox={`0 0 ${size} ${size}`}> <circle className="text-gray-700" strokeWidth={strokeWidth} stroke="currentColor" fill="transparent" r={radius} cx={size / 2} cy={size / 2} /> <circle className={`${color} progress-ring__circle`} strokeWidth={strokeWidth} strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" stroke="currentColor" fill="transparent" r={radius} cx={size / 2} cy={size / 2} /> </svg> <div className="absolute inset-0 flex items-center justify-center"><span className={`${textSizeClass} font-bold text-white font-mono`}>{value}%</span></div> </div> {label && <span className="text-[10px] font-bold text-gray-400 mt-2 uppercase font-mono">{label}</span>} </div> );
+        };
+
+        const AchievementBadge = ({ icon, color, label, locked }) => ( <div className={`flex flex-col items-center p-2 transition-all ${locked ? 'opacity-40 grayscale' : 'opacity-100 scale-105'}`}> <div className={`w-10 h-10 rounded-full flex items-center justify-center text-slate-900 mb-1 shadow-md ${locked ? 'bg-gray-700' : 'bg-jpm-accent'}`}><i className={`fas ${icon}`}></i></div> <span className="text-[10px] font-bold text-center leading-tight text-gray-300 font-mono">{label}</span> </div> );
 
         const DisclaimerModal = ({ onEnter }) => (
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-95 backdrop-blur-md p-4">
@@ -274,6 +282,7 @@
             </div>
         );
 
+        // 2. Complex Visualizations
         // --- COMMAND CENTER: 2x2 GRID (v20.72) ---
         const TechInsightsModal = ({ onClose }) => {
             const [feed, setFeed] = useState([]);
@@ -310,7 +319,6 @@
 
             // 3. SWIFT Event Logic (Probabilistic)
             useEffect(() => {
-                // Trigger events when the "Radar" scan happens in Q3 (Phase 50)
                 if (phase === 50) {
                     const rand = Math.random();
                     let status = 'SETTLED';
@@ -456,7 +464,7 @@
             );
         };
 
-        // --- DASHBOARD (RESTORED) ---
+        // 3. Layout Components (Depends on Leaf)
         const Dashboard = ({ active, stats, timer, progressData, streak, totalDecks, pressureMode, onTogglePressure }) => {
             const accuracy = stats.completed > 0 ? Math.round((stats.correct / stats.completed) * 100) : 0;
             const completedCount = Object.values(progressData).filter(p => p.status === 'Completed').length;
@@ -518,6 +526,7 @@
             </div>
         );
 
+        // 4. Game Modes (Depends on Utils)
         const FlashcardMode = ({ deckData, onEnd, onStatsUpdate, pressureMode, toggleFocus, isFocusMode }) => {
             const [currentIndex, setCurrentIndex] = useState(0);
             const [flipped, setFlipped] = useState(false);
@@ -793,6 +802,7 @@
             );
         };
 
+        // 5. ROOT COMPONENT (Depends on Layout)
         const App = () => {
             const [data, setData] = useState({ flashcards: [], type: [], mcq: [], study: [], prompts: [], skills: [], vocab: [] });
             const [mode, setMode] = useState('menu'); 
@@ -917,6 +927,8 @@
                 results.push({ id: 86, name: "Component: Dashboard Defined", pass: typeof Dashboard !== 'undefined' });
                 results.push({ id: 87, name: "UI: Command Center Grid", pass: true });
                 results.push({ id: 88, name: "Logic: Map Pathing", pass: true });
+                results.push({ id: 89, name: "Component: CircularProgress Defined", pass: typeof CircularProgress !== 'undefined' });
+                results.push({ id: 90, name: "Component: AchievementBadge Defined", pass: typeof AchievementBadge !== 'undefined' });
                 setTestResults(results); 
             };
 
@@ -1053,7 +1065,7 @@
                         <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.72 | Premium Edition</span></div>
+                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.73 | Premium Edition</span></div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
@@ -1131,3 +1143,4 @@
     </script>
 </body>
 </html>
+
