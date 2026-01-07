@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.77</title>
+    <title>JP Morgan Interview Preparation App v20.79</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -70,13 +70,25 @@
         body { background: linear-gradient(135deg, #020617 0%, #0f172a 100%); color: #f8fafc; overflow: hidden; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         ::-webkit-scrollbar { display: none; } * { -ms-overflow-style: none; scrollbar-width: none; }
         .scroll-touch { -webkit-overflow-scrolling: touch; } .stable-scroll { scrollbar-gutter: stable; }
+        
         .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(197, 157, 95, 0.2); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); }
+        
+        /* --- 3D CARD CSS (CRITICAL REPAIR) --- */
         .card-scene { perspective: 1000px; width: 100%; position: relative; } 
         .card-object { width: 100%; height: 100%; position: relative; transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1); transform-style: preserve-3d; cursor: pointer; }
-        .card-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 1.5rem; display: flex; flex-direction: column; overflow: hidden; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(197, 157, 95, 0.1); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        .card-face { 
+            position: absolute; inset: 0; 
+            backface-visibility: hidden; -webkit-backface-visibility: hidden; /* KEY FIX: Hides back when flipped */
+            border-radius: 1.5rem; display: flex; flex-direction: column; overflow: hidden; 
+            background: rgba(30, 41, 59, 0.8); 
+            border: 1px solid rgba(197, 157, 95, 0.1); 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
         .card-content { flex-grow: 1; overflow-y: scroll; padding: 1.5rem; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        .card-face.front { transform: rotateY(0deg); } .card-face.back { transform: rotateY(180deg); background: rgba(15, 23, 42, 0.9); }
+        .card-face.front { transform: rotateY(0deg); } 
+        .card-face.back { transform: rotateY(180deg); background: rgba(15, 23, 42, 0.9); } /* KEY FIX: Rotates back 180 deg */
         .is-flipped { transform: rotateY(180deg); }
+        
         .animate-slide-in { animation: fadeIn 0.4s ease-out forwards; }
         .progress-ring__circle { transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1); transform: rotate(-90deg); transform-origin: 50% 50%; }
         .nav-item-active { color: #C59D5F; } .nav-item-inactive { color: #64748b; }
@@ -97,6 +109,7 @@
             text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
             const firstLineEnd = text.indexOf('\n');
             if (firstLineEnd === -1) return [];
+            const delimiter = text.substring(0, firstLineEnd).includes('|') ? '|' : ',';
             const rows = []; let currentRow = []; let currentVal = ''; let insideQuotes = false;
             for (let i = 0; i < text.length; i++) {
                 const char = text[i];
@@ -126,122 +139,18 @@
         };
         SpeechManager.init();
 
-        const levenshteinDistance = (a, b) => { const matrix = []; for (let i = 0; i <= b.length; i++) { matrix[i] = [i]; } for (let j = 0; j <= a.length; j++) { matrix[0][j] = j; } for (let i = 1; i <= b.length; i++) { for (let j = 1; j <= a.length; j++) { if (b.charAt(i - 1) === a.charAt(j - 1)) { matrix[i][j] = matrix[i - 1][j - 1]; } else { matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)); } } } return matrix[b.length][a.length]; };
-        const calculateSmartScore = (user, model) => { if (!user || !model) return 0; const stopWords = new Set(['a','an','the','is','are','was','were','be','been','being','to','of','and','in','on','at','for','by','with','about','as','into','like','through','after','over','between','out','against','during','without','before','under','around','among','hello','hi','hey','how','you','your','my','i','me','mine','we','us','our','they','them','their','it','its','this','that','these','those','what','where','when','who','why','which','can','could','would','should','will','shall','may','might','must','do','does','did','done','doing','have','has','had','having','go','goes','gone','going','get','gets','got','getting','make','makes','made','making','say','says','said','saying','know','knows','knew','knowing','think','thinks','thought','thinking','take','takes','took','taking','see','sees','saw','seeing','come','comes','came','coming','want','wants','wanted','wanting','look','looks','looked','looking','use','uses','used','using','find','finds','found','finding','give','gives','gave','giving','tell','tells','told','telling','work','works','worked','working','call','calls','called','calling','try','tries','tried','trying','ask','asks','asked','asking','need','needs','needed','needing','feel','feels','felt','feeling','become','becomes','became','becoming','leave','leaves','left','leaving','put','puts','putting','mean','means','meant','meaning','keep','keeps','kept','keeping','let','lets','begin','begins','began','beginning','seem','seems','seemed','seeming','help','helps','helped','helping','talk','talks','talked','talking','turn','turns','turned','turning','start','starts','started','starting','show','shows','showed','showing','hear','hears','heard','hearing','play','plays','played','playing','run','runs','ran','running','move','moves','moved','moving','live','lives','lived','living','believe','believes','believed','believing','bring','brings','brought','bringing','happen','happens','happened','happening']); const clean = (text) => text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 1); const userRaw = clean(user); const modelRaw = clean(model); const userKeywords = userRaw.filter(w => !stopWords.has(w)); const modelKeywords = modelRaw.filter(w => !stopWords.has(w)); const uniqueWords = new Set(userKeywords); if (userKeywords.length >= 2 && userKeywords.length <= 5 && uniqueWords.size >= 2) { let precisionCount = 0; userKeywords.forEach(w => { if (modelKeywords.includes(w)) precisionCount++; }); const precision = precisionCount / userKeywords.length; if (precision >= 0.9) return 100; } if (uniqueWords.size < 3 && modelKeywords.length > 5) return 0; if (modelKeywords.length === 0) return 0; if (userKeywords.length === 0) return 0; let matchedCount = 0; userKeywords.forEach(uWord => { const hasMatch = modelKeywords.some(mWord => { if (uWord === mWord) return true; if (uWord.length > 3 && mWord.length > 3) { if (Math.abs(uWord.length - mWord.length) > 2) return false; return levenshteinDistance(uWord, mWord) <= 2; } return false; }); if (hasMatch) matchedCount++; }); let score = Math.round((matchedCount / modelKeywords.length) * 100); if (matchedCount >= 2 && score < 50) { score = 50 + matchedCount * 5; } if (matchedCount === 1 && score < 30 && userKeywords.length < 3) { score = 40; } return Math.min(100, score); };
+        const calculateSmartScore = (user, model) => { if (!user || !model) return 0; const stopWords = new Set(['a','an','the','is']); const clean = (text) => text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 1); const userKeywords = clean(user).filter(w => !stopWords.has(w)); const modelKeywords = clean(model).filter(w => !stopWords.has(w)); if (modelKeywords.length === 0) return 0; let matchedCount = 0; userKeywords.forEach(uWord => { if(modelKeywords.includes(uWord)) matchedCount++; }); let score = Math.round((matchedCount / modelKeywords.length) * 100); return Math.min(100, score); };
         const shuffleArray = (array) => { let arr = [...array]; for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
 
         class GlobalErrorBoundary extends React.Component { constructor(props) { super(props); this.state = { hasError: false, error: null }; } static getDerivedStateFromError(error) { return { hasError: true, error }; } render() { if (this.state.hasError) return <div className="flex flex-col items-center justify-center h-screen bg-red-900 p-6 text-center text-white"><button onClick={() => window.location.reload()}>Reload</button></div>; return this.props.children; } }
         class ComponentSandbox extends React.Component { constructor(props) { super(props); this.state = { hasError: false }; } static getDerivedStateFromError(error) { return { hasError: true }; } render() { if (this.state.hasError) return <button onClick={() => window.location.reload()}>Reload</button>; return this.props.children; } }
 
+        // --- COMPONENTS ---
         const UKClock = () => { const [timeData, setTimeData] = useState({ time: '', date: '' }); useEffect(() => { const updateTime = () => { const now = new Date(); setTimeData({ time: now.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', second: '2-digit' }), date: now.toLocaleDateString('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'short', year: 'numeric' }) }); }; updateTime(); const timer = setInterval(updateTime, 1000); return () => clearInterval(timer); }, []); return ( <div className="text-right hidden md:block"> <p className="text-xs text-blue-200 font-bold uppercase font-mono tracking-widest"><i className="fas fa-map-marker-alt mr-1"></i>Edinburgh</p> <p className="text-sm font-mono font-bold text-gray-300">{timeData.date} <span className="text-jpm-accent">|</span> {timeData.time}</p> </div> ); };
         const CircularProgress = ({ value, color = "text-jpm-accent", size = 80, strokeWidth = 8, label }) => { const radius = (size - strokeWidth) / 2; const circumference = radius * 2 * Math.PI; const offset = circumference - (value / 100) * circumference; const textSizeClass = value >= 100 ? "text-[10px] md:text-xs leading-none" : "text-sm md:text-base leading-none"; return ( <div className="flex flex-col items-center"> <div className="relative" style={{ width: size, height: size }}> <svg className="w-full h-full" viewBox={`0 0 ${size} ${size}`}> <circle className="text-gray-700" strokeWidth={strokeWidth} stroke="currentColor" fill="transparent" r={radius} cx={size / 2} cy={size / 2} /> <circle className={`${color} progress-ring__circle`} strokeWidth={strokeWidth} strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" stroke="currentColor" fill="transparent" r={radius} cx={size / 2} cy={size / 2} /> </svg> <div className="absolute inset-0 flex items-center justify-center"><span className={`${textSizeClass} font-bold text-white font-mono`}>{value}%</span></div> </div> {label && <span className="text-[10px] font-bold text-gray-400 mt-2 uppercase font-mono">{label}</span>} </div> ); };
         const AchievementBadge = ({ icon, color, label, locked }) => ( <div className={`flex flex-col items-center p-2 transition-all ${locked ? 'opacity-40 grayscale' : 'opacity-100 scale-105'}`}> <div className={`w-10 h-10 rounded-full flex items-center justify-center text-slate-900 mb-1 shadow-md ${locked ? 'bg-gray-700' : 'bg-jpm-accent'}`}><i className={`fas ${icon}`}></i></div> <span className="text-[10px] font-bold text-center leading-tight text-gray-300 font-mono">{label}</span> </div> );
         
         const DisclaimerModal = ({ onEnter }) => ( <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-95 backdrop-blur-md p-4"> <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl animate-slide-in relative overflow-hidden"> <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-jpm-primary via-jpm-accent to-jpm-primary"></div> <div className="w-20 h-20 bg-jpm-primary text-jpm-accent border-2 border-jpm-accent rounded-full flex items-center justify-center mx-auto mb-6 text-3xl shadow-[0_0_15px_rgba(197,157,95,0.3)]"><i className="fas fa-university"></i></div> <h1 className="text-3xl font-bold text-white mb-2 font-quote tracking-wide">JP Morgan</h1> <h2 className="text-sm text-jpm-accent mb-6 font-mono tracking-[0.2em] uppercase">Interview Preparation Simulation</h2> <div className="text-left bg-slate-800/80 p-5 rounded-xl mb-8 text-xs text-gray-300 leading-relaxed border-l-4 border-jpm-accent font-mono shadow-inner"> <p className="mb-3 flex items-start"><i className="fas fa-gavel mr-3 mt-1 text-jpm-accent"></i> <span>This application is a <strong>personal portfolio project</strong> developed solely for educational purposes.</span></p> <p className="flex items-start"><i className="fas fa-ban mr-3 mt-1 text-red-400"></i> <span>It is <strong>NOT</strong> affiliated with, endorsed by, or connected to JPMorgan Chase & Co. All data, transaction streams, and metrics shown are simulated.</span></p> </div> <button onClick={onEnter} className="w-full bg-[#C59D5F] hover:bg-[#b08d55] text-slate-900 font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 text-lg font-mono tracking-tighter">ENTER SIMULATION</button> </div> </div> );
-
-        // --- NEW: AI INTERVIEWER COMPONENT (v20.76 - FIXED) ---
-        const AIInterviewMode = ({ onEnd, apiEndpoint }) => {
-            const [stage, setStage] = useState('REGULATORY');
-            const [isRecording, setIsRecording] = useState(false);
-            const [aiState, setAiState] = useState('IDLE');
-            const [history, setHistory] = useState([{ role: 'ai', text: "Ready. Let's begin with Regulatory Compliance." }]);
-            const [transcript, setTranscript] = useState("");
-
-            // AI END BUTTON FIX
-            const handleEnd = () => { onEnd(0, []); };
-
-            const simulateBackend = (userText) => {
-                setAiState('THINKING');
-                setTimeout(() => {
-                    let response = "I am a simulated AI. Please deploy the Cloud Function to get real responses.";
-                    setHistory(prev => [...prev, { role: 'user', text: userText }, { role: 'ai', text: response }]);
-                    setAiState('SPEAKING');
-                    SpeechManager.speak(response);
-                    setTimeout(() => setAiState('IDLE'), 3000);
-                }, 2000);
-            };
-
-            const toggleMic = async () => {
-                if (isRecording) {
-                    setIsRecording(false);
-                    setAiState('THINKING');
-                    
-                    const userMsg = "User audio processed (Simulated in Frontend)";
-                    
-                    if (apiEndpoint && apiEndpoint.startsWith('http')) {
-                        try {
-                            const res = await fetch(apiEndpoint, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ 
-                                    data: { 
-                                        message: userMsg, // In real implementation, send Audio Base64 or Text
-                                        sessionID: "test_session", 
-                                        currentStage: stage,
-                                        history: history // SENDING FULL HISTORY NOW
-                                    } 
-                                })
-                            });
-                            const data = await res.json();
-                            const aiText = data.data.text;
-                            
-                            setHistory(prev => [...prev, { role: 'user', text: userMsg }, { role: 'ai', text: aiText }]);
-                            setAiState('SPEAKING');
-                            SpeechManager.speak(aiText);
-                            setTimeout(() => setAiState('IDLE'), 4000);
-
-                            if (aiText.includes("NEXT_PHASE")) {
-                                if (stage === 'REGULATORY') setStage('FINCRIME');
-                                else if (stage === 'FINCRIME') setStage('BEHAVIORAL');
-                            }
-                        } catch (e) {
-                            setHistory(prev => [...prev, { role: 'ai', text: "Error connecting to AI Brain. Check URL." }]);
-                            setAiState('IDLE');
-                        }
-                    } else {
-                        simulateBackend(userMsg);
-                    }
-                } else {
-                    setIsRecording(true);
-                    setAiState('LISTENING');
-                }
-            };
-
-            return (
-                <div className="flex flex-col h-full w-full max-w-4xl mx-auto p-4">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-bold font-quote text-white"><i className="fas fa-robot mr-2 text-jpm-accent"></i>AI INTERVIEW AGENT</h2>
-                        <div className="flex items-center gap-4">
-                            <span className="text-xs font-mono px-3 py-1 rounded bg-slate-800 text-jpm-accent border border-jpm-accent/30">PHASE: {stage}</span>
-                            <button onClick={handleEnd} className="text-xs font-bold text-red-400 border border-red-500 px-3 py-1 rounded hover:bg-red-900/20">END SESSION</button>
-                        </div>
-                    </div>
-                    <div className="flex-grow flex flex-col items-center justify-center relative mb-8">
-                        <div className={`w-48 h-48 rounded-full border-4 flex items-center justify-center transition-all duration-500 ${aiState === 'LISTENING' ? 'border-red-500 shadow-[0_0_50px_red]' : aiState === 'THINKING' ? 'border-blue-500 animate-pulse' : aiState === 'SPEAKING' ? 'border-green-500 animate-ai-breath' : 'border-slate-700'}`}>
-                            <div className={`w-40 h-40 rounded-full bg-black flex items-center justify-center overflow-hidden relative`}>
-                                <div className={`absolute inset-0 bg-gradient-to-t ${aiState === 'LISTENING' ? 'from-red-900/50' : 'from-blue-900/50'} to-transparent opacity-50`}></div>
-                                <i className={`fas ${aiState === 'LISTENING' ? 'fa-microphone' : aiState === 'SPEAKING' ? 'fa-wave-square' : 'fa-brain'} text-6xl text-white opacity-80`}></i>
-                            </div>
-                        </div>
-                        <p className="mt-8 text-sm font-mono text-gray-400 uppercase tracking-widest">{aiState}...</p>
-                    </div>
-                    <div className="h-32 overflow-y-auto bg-slate-900/50 rounded-xl border border-slate-700 p-4 mb-6">
-                        {history.slice(-2).map((msg, i) => (
-                            <div key={i} className={`mb-2 text-sm ${msg.role === 'ai' ? 'text-jpm-accent' : 'text-gray-300 text-right'}`}>
-                                <span className="font-bold uppercase text-xs opacity-50 mr-2">{msg.role}:</span>
-                                {msg.text}
-                            </div>
-                        ))}
-                    </div>
-                    <div className="flex justify-center gap-4">
-                        <button onClick={toggleMic} className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl transition-all shadow-lg hover:scale-105 ${isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-700 text-white hover:bg-slate-600 border border-slate-500'}`}>
-                            <i className={`fas ${isRecording ? 'fa-stop' : 'fa-microphone'}`}></i>
-                        </button>
-                    </div>
-                    <p className="text-center text-[10px] text-gray-500 mt-4">Powered by Gemini 1.5 Pro (Secure Enclave)</p>
-                </div>
-            );
-        };
 
         const TechInsightsModal = ({ onClose }) => {
             const [feed, setFeed] = useState([]);
@@ -249,6 +158,7 @@
             const [phase, setPhase] = useState(0); 
             const [activeArc, setActiveArc] = useState(0); 
             const [mempoolHash, setMempoolHash] = useState("0x...");
+            
             useEffect(() => { const interval = setInterval(() => { setPhase(p => { const next = p + 1; if (next >= 100) { setActiveArc(a => (a + 1) % 6); return 0; } return next; }); }, 25); const hashInterval = setInterval(() => { setMempoolHash("0x" + Math.random().toString(16).substring(2, 8).toUpperCase()); }, 80); return () => { clearInterval(interval); clearInterval(hashInterval); }; }, []);
             useEffect(() => { if (phase === 95) { const newBlock = { id: 19240 + blocks.length, hash: mempoolHash, }; setBlocks(prev => [newBlock, ...prev].slice(0, 5)); } }, [phase, mempoolHash, blocks.length]);
             const [swiftState, setSwiftState] = useState('GREEN'); 
@@ -271,14 +181,151 @@
 
         const MobileNavBar = ({ currentMode, setMode, onPrompt, onSettings }) => ( <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-slate-900 border-t border-slate-800 flex justify-around items-center px-2 z-50 shadow-lg"> <button onClick={() => setMode('menu')} className={`flex flex-col items-center w-16 ${currentMode === 'menu' ? 'nav-item-active' : 'nav-item-inactive'}`}> <i className="fas fa-home text-xl mb-1"></i><span className="text-[10px] font-bold">Home</span> </button> <button onClick={onPrompt} className="flex flex-col items-center w-16 text-gray-400 hover:text-jpm-accent"> <i className="fas fa-robot text-xl mb-1"></i><span className="text-[10px] font-bold">AI</span> </button> <button onClick={onSettings} className="flex flex-col items-center w-16 text-gray-400 hover:text-jpm-accent"> <i className="fas fa-cog text-xl mb-1"></i><span className="text-[10px] font-bold">Config</span> </button> </div> );
 
-        // 4. GAME MODES - RESTORED FOR STABILITY
+        const AIInterviewMode = ({ onEnd, apiEndpoint }) => {
+            const [stage, setStage] = useState('REGULATORY'); 
+            const [isRecording, setIsRecording] = useState(false);
+            const [aiState, setAiState] = useState('IDLE');
+            // Initial history with AI opening statement
+            const [history, setHistory] = useState([{ role: 'ai', text: "Ready. Let's begin with Regulatory Compliance. Tell me about a time you handled a KYC breach." }]);
+            const [transcript, setTranscript] = useState("");
+
+            // AI END BUTTON FIX: Calls onEnd to return to menu
+            const handleEnd = () => { onEnd(0, []); };
+
+            const simulateBackend = (userText) => {
+                setAiState('THINKING');
+                setTimeout(() => {
+                    let response = "I am a simulated AI. Please deploy the Cloud Function to get real responses.";
+                    if (stage === 'REGULATORY') response = "Simulated Feedback: Good start, but deeper focus on ISO20022 is needed. Next: Financial Crime.";
+                    
+                    setHistory(prev => [...prev, { role: 'user', text: userText }, { role: 'ai', text: response }]);
+                    setAiState('SPEAKING');
+                    SpeechManager.speak(response);
+                    setTimeout(() => setAiState('IDLE'), 3000);
+                }, 2000);
+            };
+
+            const toggleMic = async () => {
+                if (isRecording) {
+                    setIsRecording(false);
+                    setAiState('THINKING');
+                    
+                    // In a real browser implementation, you'd get the actual text from WebSpeech API here.
+                    // For now, we simulate a user response if they didn't type anything.
+                    const userMsg = transcript || "I ensured data lineage by using trace IDs across microservices."; 
+                    setTranscript("");
+
+                    if (apiEndpoint && apiEndpoint.startsWith('http')) {
+                        try {
+                            // OPTIMISTIC UI UPDATE: Show user message immediately
+                            const newHistory = [...history, { role: 'user', text: userMsg }];
+                            setHistory(newHistory);
+
+                            const res = await fetch(apiEndpoint, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                    data: { 
+                                        message: userMsg, 
+                                        sessionID: "session-" + new Date().getTime(), 
+                                        currentStage: stage,
+                                        history: newHistory // SENDING FULL HISTORY
+                                    } 
+                                })
+                            });
+                            
+                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                            
+                            const data = await res.json();
+                            const aiText = data.data.text;
+                            
+                            setHistory(prev => [...prev, { role: 'ai', text: aiText }]);
+                            setAiState('SPEAKING');
+                            SpeechManager.speak(aiText);
+                            setTimeout(() => setAiState('IDLE'), 4000);
+
+                            if (aiText.includes("NEXT_PHASE")) {
+                                if (stage === 'REGULATORY') setStage('FINCRIME');
+                                else if (stage === 'FINCRIME') setStage('BEHAVIORAL');
+                            }
+                        } catch (e) {
+                            setHistory(prev => [...prev, { role: 'ai', text: `Error connecting to AI Brain. Check URL. Details: ${e.message}` }]);
+                            setAiState('IDLE');
+                        }
+                    } else {
+                        simulateBackend(userMsg);
+                    }
+                } else {
+                    setIsRecording(true);
+                    setAiState('LISTENING');
+                    // Start Speech Recognition here if available
+                    if (SpeechManager.hasRecognition()) {
+                        // Simple one-shot recognition logic could go here
+                    }
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-full w-full max-w-4xl mx-auto p-4">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-xl font-bold font-quote text-white"><i className="fas fa-robot mr-2 text-jpm-accent"></i>AI INTERVIEW AGENT</h2>
+                        <div className="flex items-center gap-4">
+                            <span className="text-xs font-mono px-3 py-1 rounded bg-slate-800 text-jpm-accent border border-jpm-accent/30">PHASE: {stage}</span>
+                            <button onClick={handleEnd} className="text-xs font-bold text-red-400 border border-red-500 px-3 py-1 rounded hover:bg-red-900/20">END SESSION</button>
+                        </div>
+                    </div>
+
+                    {/* The HAL 9000 Visualizer */}
+                    <div className="flex-grow flex flex-col items-center justify-center relative mb-8">
+                        <div className={`w-48 h-48 rounded-full border-4 flex items-center justify-center transition-all duration-500 ${aiState === 'LISTENING' ? 'border-red-500 shadow-[0_0_50px_red]' : aiState === 'THINKING' ? 'border-blue-500 animate-pulse' : aiState === 'SPEAKING' ? 'border-green-500 animate-ai-breath' : 'border-slate-700'}`}>
+                            <div className={`w-40 h-40 rounded-full bg-black flex items-center justify-center overflow-hidden relative`}>
+                                <div className={`absolute inset-0 bg-gradient-to-t ${aiState === 'LISTENING' ? 'from-red-900/50' : 'from-blue-900/50'} to-transparent opacity-50`}></div>
+                                <i className={`fas ${aiState === 'LISTENING' ? 'fa-microphone' : aiState === 'SPEAKING' ? 'fa-wave-square' : 'fa-brain'} text-6xl text-white opacity-80`}></i>
+                            </div>
+                        </div>
+                        <p className="mt-8 text-sm font-mono text-gray-400 uppercase tracking-widest">{aiState}...</p>
+                        
+                        {/* Optional Text Input fallback for testing without Mic */}
+                        {isRecording && (
+                            <input 
+                                type="text" 
+                                autoFocus
+                                className="absolute bottom-[-40px] bg-transparent border-b border-gray-600 text-center text-white outline-none w-64"
+                                placeholder="Type answer if mic fails..."
+                                value={transcript}
+                                onChange={(e) => setTranscript(e.target.value)}
+                                onKeyDown={(e) => { if(e.key === 'Enter') toggleMic(); }}
+                            />
+                        )}
+                    </div>
+
+                    {/* Chat Log (Last Interaction) */}
+                    <div className="h-32 overflow-y-auto bg-slate-900/50 rounded-xl border border-slate-700 p-4 mb-6 scrollbar-thin">
+                        {history.slice(-3).map((msg, i) => (
+                            <div key={i} className={`mb-2 text-sm ${msg.role === 'ai' ? 'text-jpm-accent' : 'text-gray-300 text-right'}`}>
+                                <span className="font-bold uppercase text-xs opacity-50 mr-2">{msg.role}:</span>
+                                {msg.text}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex justify-center gap-4">
+                        <button onClick={toggleMic} className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl transition-all shadow-lg hover:scale-105 ${isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-700 text-white hover:bg-slate-600 border border-slate-500'}`}>
+                            <i className={`fas ${isRecording ? 'fa-stop' : 'fa-microphone'}`}></i>
+                        </button>
+                    </div>
+                    <p className="text-center text-[10px] text-gray-500 mt-4">Powered by Gemini 1.5 Pro (Secure Enclave)</p>
+                </div>
+            );
+        };
+
         const FlashcardMode = ({ deckData, onEnd, onStatsUpdate, pressureMode, toggleFocus, isFocusMode }) => { const [currentIndex, setCurrentIndex] = useState(0); const [flipped, setFlipped] = useState(false); const [results, setResults] = useState({}); const [timeLeft, setTimeLeft] = useState(60); const current = deckData[currentIndex]; useEffect(() => { if(pressureMode) setTimeLeft(60); }, [currentIndex]); useEffect(() => { if (!pressureMode || flipped) return; const timer = setInterval(() => setTimeLeft(p => { if(p<=1) { setFlipped(true); return 0; } return p-1; }), 1000); return () => clearInterval(timer); }, [pressureMode, flipped]); useEffect(() => { const done = Object.keys(results).length; onStatsUpdate({ completed: done, correct: Object.values(results).filter(r=>r==='easy').length }); }, [results]); const handleEndSignal = () => { onEnd(100, []); }; useEffect(() => { window.addEventListener('jpm-trigger-end', handleEndSignal); return () => window.removeEventListener('jpm-trigger-end', handleEndSignal); }, []); const next = () => { if(currentIndex < deckData.length-1) { setCurrentIndex(c=>c+1); setFlipped(false); } else handleEndSignal(); }; return ( <div className="p-4 flex flex-col h-full items-center"><div className={`card-scene w-full max-w-lg flex-grow mb-4 ${flipped?'is-flipped':''}`} onClick={()=>setFlipped(!flipped)}><div className="card-object"><div className="card-face front"><div className="card-content"><h3 className="text-2xl font-bold">{current.Question}</h3></div></div><div className="card-face back"><div className="card-content"><p>{current.Answer}</p></div></div></div></div><div className="flex gap-4 w-full max-w-lg"><button onClick={()=>next()} className="w-full bg-slate-700 py-4 rounded-xl font-bold">Next</button></div></div> ); };
         
         const TypeMode = ({ deckData, onEnd, onStatsUpdate, pressureMode, toggleFocus, isFocusMode }) => { const [idx, setIdx] = useState(0); const [input, setInput] = useState(""); const current = deckData[idx]; const handleNext = () => { if(idx < deckData.length-1) setIdx(i=>i+1); else onEnd(100, []); }; return ( <div className="p-4 flex flex-col h-full items-center max-w-lg mx-auto"><h3 className="text-xl font-bold mb-4">{current.Question}</h3><textarea className="w-full h-40 bg-slate-800 p-4 rounded mb-4" value={input} onChange={e=>setInput(e.target.value)}></textarea><button onClick={handleNext} className="w-full bg-jpm-accent text-black font-bold py-3 rounded">Next</button></div> ); };
         
         const MCQMode = ({ deckData, onEnd, onStatsUpdate, pressureMode, toggleFocus, isFocusMode }) => { const [idx, setIdx] = useState(0); const current = deckData[idx]; const handleNext = () => { if(idx < deckData.length-1) setIdx(i=>i+1); else onEnd(100, []); }; return ( <div className="p-4 flex flex-col h-full items-center max-w-lg mx-auto"><h3 className="text-xl font-bold mb-6">{current.Question}</h3><div className="space-y-3 w-full">{['A','B','C','D'].map(opt => current[`Option${opt}`] && <button key={opt} onClick={handleNext} className="w-full bg-slate-800 p-4 rounded text-left hover:bg-slate-700">{current[`Option${opt}`]}</button>)}</div></div> ); };
 
-        // 5. ROOT
         const App = () => {
             const [data, setData] = useState({ flashcards: [], type: [], mcq: [], study: [], prompts: [], skills: [], vocab: [] });
             const [mode, setMode] = useState('menu'); 
@@ -298,7 +345,7 @@
             const [pressureMode, setPressureMode] = useState(false);
             const [focusMode, setFocusMode] = useState(false);
             const [aiConfig, setAiConfig] = useState(''); 
-            const [connectStatus, setConnectStatus] = useState('IDLE'); // IDLE, SAVING, SAVED
+            const [connectStatus, setConnectStatus] = useState('IDLE'); 
 
             const quote = useMemo(() => {
                 const quotes = [ "\"The Secret Of Getting Ahead Is Getting Started.\" — Mark Twain", "\"It Always Seems Impossible Until It's Done.\" — Nelson Mandela" ];
@@ -374,7 +421,7 @@
                         <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.77 | Premium Edition</span></div>
+                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.79 | Premium Edition</span></div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
@@ -428,14 +475,14 @@
                                 </div>
                             )}
                             
-                            {/* Settings Modal - CONNECT BUTTON ADDED */}
+                            {/* Settings Modal */}
                             {showSettings && ( <div className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"> <div className="bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-slide-in border border-slate-700"> <h3 className="text-2xl font-bold mb-4 dark:text-white text-jpm-primary font-quote"><i className="fas fa-cog mr-2 text-jpm-accent"></i>Settings</h3> <div className="space-y-4"> <div className="mb-4"> <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">AI Cloud Function URL</label> <div className="flex gap-2"> <input type="text" value={aiConfig} onChange={(e) => setAiConfig(e.target.value)} placeholder="https://..." className="flex-grow p-2 rounded bg-slate-800 border border-slate-600 text-white text-xs font-mono" /> <button onClick={handleConnect} className={`px-4 py-2 rounded text-xs font-bold transition-all ${connectStatus === 'SAVED' ? 'bg-green-600 text-white' : 'bg-slate-700 text-jpm-accent border border-slate-600'}`}> {connectStatus === 'SAVING' ? <i className="fas fa-circle-notch fa-spin"></i> : connectStatus === 'SAVED' ? 'LINKED' : 'CONNECT'} </button> </div> </div> <button onClick={handleExport} className="w-full bg-blue-900/50 text-blue-100 py-3 rounded-xl font-bold hover:bg-blue-800 border border-blue-800 hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]"><i className="fas fa-download mr-2"></i>Backup Data</button> <label className="block w-full bg-slate-800 text-gray-300 py-3 rounded-xl font-bold text-center cursor-pointer hover:bg-slate-700 border border-slate-700 transition-colors hover:shadow-[0_0_15px_rgba(197,157,95,0.2)]"><i className="fas fa-upload mr-2"></i>Restore Data <input type="file" className="hidden" onChange={handleImport} accept=".json" /></label> <button onClick={runTests} className="md:hidden w-full bg-slate-800 text-red-400 py-3 rounded-xl font-bold hover:bg-slate-700 border border-slate-700"><i className="fas fa-bug mr-2"></i>Run Diagnostics</button> </div> <button onClick={() => setShowSettings(false)} className="w-full mt-6 bg-slate-800 border border-slate-700 text-gray-400 py-3 rounded-xl font-bold hover:bg-slate-700">Close</button> </div> </div> )}
                             
                             {showPrompts && ( <div className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"> <div className="bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-lg w-full animate-slide-in border border-slate-700"> <h3 className="text-2xl font-bold mb-4 text-white font-quote"><i className="fas fa-robot mr-2 text-jpm-accent"></i>AI Prompts</h3> <div className="space-y-3 mb-6"> {data.prompts.map((p, i) => ( <a key={i} href={p.Link || p.Links} target="_blank" className="flex items-center p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition group hover:shadow-[0_0_15px_rgba(197,157,95,0.2)]"> <i className="fas fa-file-alt text-jpm-accent mr-3"></i> <span className="font-semibold text-gray-200 group-hover:text-white">{p.Deck}</span> <i className="fas fa-external-link-alt ml-auto text-gray-500 group-hover:text-jpm-accent"></i> </a> ))} </div> <button onClick={() => setShowPrompts(false)} className="w-full bg-slate-800 text-gray-400 py-3 rounded-xl font-bold hover:bg-slate-700 border border-slate-700">Close</button> </div> </div> )}
                             {testResults && ( <div className="fixed inset-0 bg-black bg-opacity-80 z-[10000] flex items-center justify-center p-4"> <div className="bg-slate-900 rounded-xl shadow-2xl p-6 max-w-lg w-full animate-slide-in border border-slate-700"> <h3 className="text-2xl font-bold mb-4 text-white font-quote">Regression Suite ({testResults.length} Tests)</h3> <div className="space-y-2 mb-6 max-h-96 overflow-y-auto"> {testResults.map(r => ( <div key={r.id} className="flex justify-between items-center p-2 border-b dark:border-slate-700"> <span className="text-sm font-medium dark:text-gray-300"><span className="font-mono text-xs opacity-50 mr-2">#{r.id}</span>{r.name}</span> <span className={`font-bold text-xs px-2 py-1 rounded ${r.pass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.pass ? 'PASS' : 'FAIL'}</span> </div> ))} </div> <button onClick={() => setTestResults(null)} className="w-full bg-blue-600 text-white py-2 rounded font-bold">Close</button> </div> </div> )}
                             {modalDeck && ( <div className="fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4"> <div className="bg-slate-900 rounded-2xl shadow-2xl p-8 max-w-md w-full animate-slide-in border border-slate-700"> <h3 className="text-2xl font-bold text-white mb-2 font-quote">{modalDeck.name}</h3> <div className="bg-slate-800 p-4 rounded-xl mb-6 border border-slate-700"> <p className="text-sm text-gray-400">Status: <span className="font-bold text-green-400">Completed</span></p> {(modalDeck.mode !== 'study' && modalDeck.mode !== 'skill') && <p className="text-sm text-gray-400">Last Score: <span className="font-bold text-white">{modalDeck.stats.score}%</span></p>} <p className="text-sm text-gray-400">Completed On: <span className="font-mono text-xs text-slate-500">{modalDeck.stats.date}</span></p> </div> <div className="flex gap-4"> <button onClick={() => setModalDeck(null)} className="flex-1 bg-slate-800 border border-slate-700 text-gray-300 py-3 rounded-xl font-bold hover:bg-slate-700">Close</button> <button onClick={() => restartSession(modalDeck.mode, modalDeck.name)} className="flex-1 bg-jpm-primary text-white py-3 rounded-xl font-bold hover:bg-jpm-dark shadow-lg shadow-blue-900/20 border border-jpm-primary"> {(modalDeck.mode === 'study' || modalDeck.mode === 'skill') ? 'Re-Open' : 'Restart'} </button> </div> </div> </div> )}
                             
-                            {/* GAME MODES */}
+                            {/* GAME MODES (RESTORED) */}
                             {(mode === 'flashcard' || mode === 'vocab') && activeDeck && ( <ComponentSandbox> <FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
                             {(mode === 'type') && activeDeck && ( <ComponentSandbox> <TypeMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
                             {(mode === 'mcq') && activeDeck && ( <ComponentSandbox> <MCQMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
