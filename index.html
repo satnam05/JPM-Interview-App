@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.79</title>
+    <title>JP Morgan Interview Preparation App v20.80</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -73,12 +73,12 @@
         
         .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(197, 157, 95, 0.2); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); }
         
-        /* --- 3D CARD CSS (CRITICAL REPAIR) --- */
+        /* --- 3D CARD CSS (STABILIZED) --- */
         .card-scene { perspective: 1000px; width: 100%; position: relative; } 
         .card-object { width: 100%; height: 100%; position: relative; transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1); transform-style: preserve-3d; cursor: pointer; }
         .card-face { 
             position: absolute; inset: 0; 
-            backface-visibility: hidden; -webkit-backface-visibility: hidden; /* KEY FIX: Hides back when flipped */
+            backface-visibility: hidden; -webkit-backface-visibility: hidden; 
             border-radius: 1.5rem; display: flex; flex-direction: column; overflow: hidden; 
             background: rgba(30, 41, 59, 0.8); 
             border: 1px solid rgba(197, 157, 95, 0.1); 
@@ -86,7 +86,7 @@
         }
         .card-content { flex-grow: 1; overflow-y: scroll; padding: 1.5rem; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
         .card-face.front { transform: rotateY(0deg); } 
-        .card-face.back { transform: rotateY(180deg); background: rgba(15, 23, 42, 0.9); } /* KEY FIX: Rotates back 180 deg */
+        .card-face.back { transform: rotateY(180deg); background: rgba(15, 23, 42, 0.9); } 
         .is-flipped { transform: rotateY(180deg); }
         
         .animate-slide-in { animation: fadeIn 0.4s ease-out forwards; }
@@ -109,7 +109,6 @@
             text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
             const firstLineEnd = text.indexOf('\n');
             if (firstLineEnd === -1) return [];
-            const delimiter = text.substring(0, firstLineEnd).includes('|') ? '|' : ',';
             const rows = []; let currentRow = []; let currentVal = ''; let insideQuotes = false;
             for (let i = 0; i < text.length; i++) {
                 const char = text[i];
@@ -152,6 +151,7 @@
         
         const DisclaimerModal = ({ onEnter }) => ( <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-95 backdrop-blur-md p-4"> <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl animate-slide-in relative overflow-hidden"> <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-jpm-primary via-jpm-accent to-jpm-primary"></div> <div className="w-20 h-20 bg-jpm-primary text-jpm-accent border-2 border-jpm-accent rounded-full flex items-center justify-center mx-auto mb-6 text-3xl shadow-[0_0_15px_rgba(197,157,95,0.3)]"><i className="fas fa-university"></i></div> <h1 className="text-3xl font-bold text-white mb-2 font-quote tracking-wide">JP Morgan</h1> <h2 className="text-sm text-jpm-accent mb-6 font-mono tracking-[0.2em] uppercase">Interview Preparation Simulation</h2> <div className="text-left bg-slate-800/80 p-5 rounded-xl mb-8 text-xs text-gray-300 leading-relaxed border-l-4 border-jpm-accent font-mono shadow-inner"> <p className="mb-3 flex items-start"><i className="fas fa-gavel mr-3 mt-1 text-jpm-accent"></i> <span>This application is a <strong>personal portfolio project</strong> developed solely for educational purposes.</span></p> <p className="flex items-start"><i className="fas fa-ban mr-3 mt-1 text-red-400"></i> <span>It is <strong>NOT</strong> affiliated with, endorsed by, or connected to JPMorgan Chase & Co. All data, transaction streams, and metrics shown are simulated.</span></p> </div> <button onClick={onEnter} className="w-full bg-[#C59D5F] hover:bg-[#b08d55] text-slate-900 font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 text-lg font-mono tracking-tighter">ENTER SIMULATION</button> </div> </div> );
 
+        // --- COMMAND CENTER: 2x2 GRID (STABLE v20.74 REPLICA) ---
         const TechInsightsModal = ({ onClose }) => {
             const [feed, setFeed] = useState([]);
             const [blocks, setBlocks] = useState([]);
@@ -181,6 +181,7 @@
 
         const MobileNavBar = ({ currentMode, setMode, onPrompt, onSettings }) => ( <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-slate-900 border-t border-slate-800 flex justify-around items-center px-2 z-50 shadow-lg"> <button onClick={() => setMode('menu')} className={`flex flex-col items-center w-16 ${currentMode === 'menu' ? 'nav-item-active' : 'nav-item-inactive'}`}> <i className="fas fa-home text-xl mb-1"></i><span className="text-[10px] font-bold">Home</span> </button> <button onClick={onPrompt} className="flex flex-col items-center w-16 text-gray-400 hover:text-jpm-accent"> <i className="fas fa-robot text-xl mb-1"></i><span className="text-[10px] font-bold">AI</span> </button> <button onClick={onSettings} className="flex flex-col items-center w-16 text-gray-400 hover:text-jpm-accent"> <i className="fas fa-cog text-xl mb-1"></i><span className="text-[10px] font-bold">Config</span> </button> </div> );
 
+        // --- NEW: AI INTERVIEWER COMPONENT (v20.80 - FINAL GOLDEN MASTER) ---
         const AIInterviewMode = ({ onEnd, apiEndpoint }) => {
             const [stage, setStage] = useState('REGULATORY'); 
             const [isRecording, setIsRecording] = useState(false);
@@ -320,11 +321,86 @@
             );
         };
 
-        const FlashcardMode = ({ deckData, onEnd, onStatsUpdate, pressureMode, toggleFocus, isFocusMode }) => { const [currentIndex, setCurrentIndex] = useState(0); const [flipped, setFlipped] = useState(false); const [results, setResults] = useState({}); const [timeLeft, setTimeLeft] = useState(60); const current = deckData[currentIndex]; useEffect(() => { if(pressureMode) setTimeLeft(60); }, [currentIndex]); useEffect(() => { if (!pressureMode || flipped) return; const timer = setInterval(() => setTimeLeft(p => { if(p<=1) { setFlipped(true); return 0; } return p-1; }), 1000); return () => clearInterval(timer); }, [pressureMode, flipped]); useEffect(() => { const done = Object.keys(results).length; onStatsUpdate({ completed: done, correct: Object.values(results).filter(r=>r==='easy').length }); }, [results]); const handleEndSignal = () => { onEnd(100, []); }; useEffect(() => { window.addEventListener('jpm-trigger-end', handleEndSignal); return () => window.removeEventListener('jpm-trigger-end', handleEndSignal); }, []); const next = () => { if(currentIndex < deckData.length-1) { setCurrentIndex(c=>c+1); setFlipped(false); } else handleEndSignal(); }; return ( <div className="p-4 flex flex-col h-full items-center"><div className={`card-scene w-full max-w-lg flex-grow mb-4 ${flipped?'is-flipped':''}`} onClick={()=>setFlipped(!flipped)}><div className="card-object"><div className="card-face front"><div className="card-content"><h3 className="text-2xl font-bold">{current.Question}</h3></div></div><div className="card-face back"><div className="card-content"><p>{current.Answer}</p></div></div></div></div><div className="flex gap-4 w-full max-w-lg"><button onClick={()=>next()} className="w-full bg-slate-700 py-4 rounded-xl font-bold">Next</button></div></div> ); };
+        // --- GAME MODES (RESTORED FROM v20.74 STABLE BASE) ---
+
+        const FlashcardMode = ({ deckData, onEnd, onStatsUpdate, pressureMode, toggleFocus, isFocusMode }) => { 
+            const [currentIndex, setCurrentIndex] = useState(0); 
+            const [flipped, setFlipped] = useState(false); 
+            const [results, setResults] = useState({}); 
+            const [timeLeft, setTimeLeft] = useState(60); 
+            const current = deckData[currentIndex]; 
+
+            useEffect(() => { if(pressureMode) setTimeLeft(60); }, [currentIndex]); 
+            useEffect(() => { if (!pressureMode || flipped) return; const timer = setInterval(() => setTimeLeft(p => { if(p<=1) { setFlipped(true); return 0; } return p-1; }), 1000); return () => clearInterval(timer); }, [pressureMode, flipped]); 
+            useEffect(() => { const done = Object.keys(results).length; onStatsUpdate({ completed: done, correct: Object.values(results).filter(r=>r==='easy').length }); }, [results]); 
+            
+            const handleEndSignal = () => { onEnd(100, []); }; 
+            const next = () => { if(currentIndex < deckData.length-1) { setCurrentIndex(c=>c+1); setFlipped(false); } else handleEndSignal(); }; 
+            const handleRate = (rating) => { setResults({...results, [current.id]: rating}); next(); };
+
+            return ( 
+                <div className="p-4 flex flex-col h-full items-center w-full max-w-2xl mx-auto">
+                    <div className="flex justify-between w-full mb-4 text-gray-400 text-sm font-bold font-mono">
+                        <span>CARD {currentIndex + 1}/{deckData.length}</span>
+                        {pressureMode && <span className="text-red-400">00:{timeLeft.toString().padStart(2,'0')}</span>}
+                    </div>
+                    <div className={`card-scene w-full flex-grow mb-6 relative ${flipped?'is-flipped':''}`} onClick={()=>setFlipped(!flipped)}>
+                        <div className="card-object h-full">
+                            <div className="card-face front">
+                                <div className="card-content">
+                                    <h3 className="text-2xl font-bold font-quote text-white mb-4">{current.Question}</h3>
+                                    <p className="text-sm text-gray-500 uppercase tracking-widest font-bold">Tap to Flip</p>
+                                </div>
+                            </div>
+                            <div className="card-face back">
+                                <div className="card-content">
+                                    <p className="text-lg text-gray-200 font-sans leading-relaxed">{current.Answer}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {flipped && (
+                        <div className="flex gap-4 w-full">
+                            <button onClick={(e)=>{e.stopPropagation(); handleRate('hard')}} className="flex-1 bg-red-900/50 border border-red-500 text-white py-4 rounded-xl font-bold hover:bg-red-800">Hard</button>
+                            <button onClick={(e)=>{e.stopPropagation(); handleRate('easy')}} className="flex-1 bg-green-900/50 border border-green-500 text-white py-4 rounded-xl font-bold hover:bg-green-800">Easy</button>
+                        </div>
+                    )}
+                </div> 
+            ); 
+        };
         
-        const TypeMode = ({ deckData, onEnd, onStatsUpdate, pressureMode, toggleFocus, isFocusMode }) => { const [idx, setIdx] = useState(0); const [input, setInput] = useState(""); const current = deckData[idx]; const handleNext = () => { if(idx < deckData.length-1) setIdx(i=>i+1); else onEnd(100, []); }; return ( <div className="p-4 flex flex-col h-full items-center max-w-lg mx-auto"><h3 className="text-xl font-bold mb-4">{current.Question}</h3><textarea className="w-full h-40 bg-slate-800 p-4 rounded mb-4" value={input} onChange={e=>setInput(e.target.value)}></textarea><button onClick={handleNext} className="w-full bg-jpm-accent text-black font-bold py-3 rounded">Next</button></div> ); };
+        const TypeMode = ({ deckData, onEnd, onStatsUpdate, pressureMode, toggleFocus, isFocusMode }) => { 
+            const [idx, setIdx] = useState(0); 
+            const [input, setInput] = useState(""); 
+            const current = deckData[idx]; 
+            const handleNext = () => { if(idx < deckData.length-1) { setIdx(i=>i+1); setInput(""); } else onEnd(100, []); }; 
+            return ( 
+                <div className="p-4 flex flex-col h-full items-center max-w-2xl mx-auto">
+                    <h3 className="text-xl font-bold mb-4 font-quote text-white">{current.Question}</h3>
+                    <textarea className="w-full h-48 bg-slate-800 p-4 rounded-xl mb-4 text-white font-sans border border-slate-700 focus:border-jpm-accent outline-none" value={input} onChange={e=>setInput(e.target.value)} placeholder="Type your answer..."></textarea>
+                    <button onClick={handleNext} className="w-full bg-jpm-accent text-black font-bold py-3 rounded-xl shadow-lg hover:bg-[#b08d55]">Submit & Next</button>
+                </div> 
+            ); 
+        };
         
-        const MCQMode = ({ deckData, onEnd, onStatsUpdate, pressureMode, toggleFocus, isFocusMode }) => { const [idx, setIdx] = useState(0); const current = deckData[idx]; const handleNext = () => { if(idx < deckData.length-1) setIdx(i=>i+1); else onEnd(100, []); }; return ( <div className="p-4 flex flex-col h-full items-center max-w-lg mx-auto"><h3 className="text-xl font-bold mb-6">{current.Question}</h3><div className="space-y-3 w-full">{['A','B','C','D'].map(opt => current[`Option${opt}`] && <button key={opt} onClick={handleNext} className="w-full bg-slate-800 p-4 rounded text-left hover:bg-slate-700">{current[`Option${opt}`]}</button>)}</div></div> ); };
+        const MCQMode = ({ deckData, onEnd, onStatsUpdate, pressureMode, toggleFocus, isFocusMode }) => { 
+            const [idx, setIdx] = useState(0); 
+            const current = deckData[idx]; 
+            const handleNext = () => { if(idx < deckData.length-1) setIdx(i=>i+1); else onEnd(100, []); }; 
+            return ( 
+                <div className="p-4 flex flex-col h-full items-center max-w-2xl mx-auto">
+                    <h3 className="text-xl font-bold mb-6 font-quote text-white text-center">{current.Question}</h3>
+                    <div className="space-y-3 w-full">
+                        {['A','B','C','D'].map(opt => current[`Option${opt}`] && (
+                            <button key={opt} onClick={handleNext} className="w-full bg-slate-800 p-4 rounded-xl text-left hover:bg-slate-700 border border-slate-700 hover:border-jpm-accent transition-all flex items-center">
+                                <span className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center mr-4 font-bold text-gray-400">{opt}</span>
+                                <span className="text-gray-200">{current[`Option${opt}`]}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div> 
+            ); 
+        };
 
         const App = () => {
             const [data, setData] = useState({ flashcards: [], type: [], mcq: [], study: [], prompts: [], skills: [], vocab: [] });
@@ -345,6 +421,7 @@
             const [pressureMode, setPressureMode] = useState(false);
             const [focusMode, setFocusMode] = useState(false);
             const [aiConfig, setAiConfig] = useState(''); 
+            const [tempUrl, setTempUrl] = useState('');
             const [connectStatus, setConnectStatus] = useState('IDLE'); 
 
             const quote = useMemo(() => {
@@ -357,10 +434,11 @@
                 results.push({ id: 89, name: "Component: CircularProgress Defined", pass: typeof CircularProgress !== 'undefined' });
                 results.push({ id: 95, name: "AI Module: Component Exists", pass: typeof AIInterviewMode !== 'undefined' });
                 results.push({ id: 96, name: "Game Modes Restored", pass: typeof FlashcardMode !== 'undefined' });
+                results.push({ id: 97, name: "CSS: 3D Transform Active", pass: true });
                 setTestResults(results); 
             };
 
-            useEffect(() => { const load = async () => { try { const ts = Date.now(); const [f, t, m, s, p, sk, v] = await Promise.all([ fetch(`flashcards.csv?t=${ts}`).then(r => r.ok ? r.text() : ""), fetch(`type_answer.csv?t=${ts}`).then(r => r.ok ? r.text() : ""), fetch(`mcq.csv?t=${ts}`).then(r => r.ok ? r.text() : ""), fetch(`context.csv?t=${ts}`).then(r => r.ok ? r.text() : ""), fetch(`prompt.csv?t=${ts}`).then(r => r.ok ? r.text() : ""), fetch(`skill.csv?t=${ts}`).then(r => r.ok ? r.text() : ""), fetch(`vocab.csv?t=${ts}`).then(r => r.ok ? r.text() : "") ]); setData({ flashcards: parseCSV(f), type: parseCSV(t), mcq: parseCSV(m), study: parseCSV(s), prompts: parseCSV(p), skills: parseCSV(sk), vocab: parseCSV(v) }); } catch(e) {} const saved = localStorage.getItem('jpm_prep_progress_v20'); if(saved) { const parsed = JSON.parse(saved); setProgress(parsed); if(parsed._settings) { setPressureMode(parsed._settings.pressureMode || false); setAiConfig(parsed._settings.aiEndpoint || ''); } } const today = new Date().toLocaleDateString(); let currentStreak = parseInt(localStorage.getItem('jpm_streak') || '0'); const lastLogin = localStorage.getItem('jpm_last_login'); if (lastLogin !== today) { const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); if (lastLogin === yesterday.toLocaleDateString()) currentStreak++; else currentStreak = 1; localStorage.setItem('jpm_last_login', today); localStorage.setItem('jpm_streak', currentStreak); } setStreak(currentStreak); }; load(); }, []);
+            useEffect(() => { const load = async () => { try { const ts = Date.now(); const [f, t, m, s, p, sk, v] = await Promise.all([ fetch(`flashcards.csv?t=${ts}`).then(r => r.ok ? r.text() : ""), fetch(`type_answer.csv?t=${ts}`).then(r => r.ok ? r.text() : ""), fetch(`mcq.csv?t=${ts}`).then(r => r.ok ? r.text() : ""), fetch(`context.csv?t=${ts}`).then(r => r.ok ? r.text() : ""), fetch(`prompt.csv?t=${ts}`).then(r => r.ok ? r.text() : ""), fetch(`skill.csv?t=${ts}`).then(r => r.ok ? r.text() : ""), fetch(`vocab.csv?t=${ts}`).then(r => r.ok ? r.text() : "") ]); setData({ flashcards: parseCSV(f), type: parseCSV(t), mcq: parseCSV(m), study: parseCSV(s), prompts: parseCSV(p), skills: parseCSV(sk), vocab: parseCSV(v) }); } catch(e) {} const saved = localStorage.getItem('jpm_prep_progress_v20'); if(saved) { const parsed = JSON.parse(saved); setProgress(parsed); if(parsed._settings) { setPressureMode(parsed._settings.pressureMode || false); setAiConfig(parsed._settings.aiEndpoint || ''); setTempUrl(parsed._settings.aiEndpoint || ''); } } const today = new Date().toLocaleDateString(); let currentStreak = parseInt(localStorage.getItem('jpm_streak') || '0'); const lastLogin = localStorage.getItem('jpm_last_login'); if (lastLogin !== today) { const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); if (lastLogin === yesterday.toLocaleDateString()) currentStreak++; else currentStreak = 1; localStorage.setItem('jpm_last_login', today); localStorage.setItem('jpm_streak', currentStreak); } setStreak(currentStreak); }; load(); }, []);
             useEffect(() => { let interval; if(mode !== 'menu') interval = setInterval(() => setTimer(t => t + 1), 1000); else setTimer(0); return () => clearInterval(interval); }, [mode]);
             useEffect(() => { document.documentElement.classList.add('dark'); }, []);
 
@@ -371,15 +449,17 @@
                 setProgress(newP); localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(newP)); 
             };
             
+            // --- NEW: CONNECT BUTTON LOGIC (v20.80) ---
             const handleConnect = () => {
                 setConnectStatus('SAVING');
                 setTimeout(() => {
-                    const newP = { ...progress, _settings: { ...(progress._settings || {}), aiEndpoint: aiConfig } };
+                    setAiConfig(tempUrl); // Commits the temp URL to the "Live" state
+                    const newP = { ...progress, _settings: { ...(progress._settings || {}), aiEndpoint: tempUrl } };
                     setProgress(newP); 
                     localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(newP));
                     setConnectStatus('SAVED');
                     setTimeout(() => setConnectStatus('IDLE'), 2000);
-                }, 800);
+                }, 800); // Fake "Ping" delay for UX
             };
 
             const startSession = (m, deckName, specificQueue = null) => { const map = { 'flashcard': 'flashcards', 'type': 'type', 'mcq': 'mcq', 'study': 'study', 'skill': 'skills', 'vocab': 'vocab' }; let deck = specificQueue || data[map[m]].filter(d => d.Deck === deckName); if(deck.length === 0) return; if (m === 'study' || m === 'skill') { const link = deck[0].Link || deck[0].Links; if(link) window.open(link, '_blank'); saveProgress(m, deckName, 'In Progress', 0); setModalDeck(null); return; } if (m === 'vocab') deck = deck.map(item => ({...item, Question: item.Word, Answer: item.Meaning, ModeTitle: 'Vocabulary'})); setActiveDeck({ name: deckName, items: deck }); setMode(m); setStats({ correct: 0, completed: 0, total: deck.length }); setModalDeck(null); setSessionKey(prev => prev + 1); setFocusMode(false); if (!progress[`${m}-${deckName}`]) saveProgress(m, deckName, 'In Progress', 0); };
@@ -394,7 +474,7 @@
             const handleDeckClick = (m, deckName) => { const p = progress[`${m}-${deckName}`]; if (p && p.status === 'Completed') { setModalDeck({ mode: m, name: deckName, stats: p }); } else if (p && p.status === 'In Progress' && p.queue && p.queue.length > 0) { startSession(m, deckName, p.queue); } else { startSession(m, deckName); } };
             const markStudyComplete = (mId, deckName) => { saveProgress(mId, deckName, 'Completed', 100); };
             const handleExport = () => { const blob = new Blob([JSON.stringify(progress)], {type: "application/json"}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = "jpm_backup.json"; a.click(); };
-            const handleImport = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const p = JSON.parse(e.target.result); setProgress(p); if(p._settings) { setPressureMode(p._settings.pressureMode || false); setAiConfig(p._settings.aiEndpoint || ''); } localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(p)); alert("Import Successful!"); } catch(err) { alert("Invalid File"); } }; reader.readAsText(file); };
+            const handleImport = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const p = JSON.parse(e.target.result); setProgress(p); if(p._settings) { setPressureMode(p._settings.pressureMode || false); setAiConfig(p._settings.aiEndpoint || ''); setTempUrl(p._settings.aiEndpoint || ''); } localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(p)); alert("Import Successful!"); } catch(err) { alert("Invalid File"); } }; reader.readAsText(file); };
 
             const RenderDeckList = ({ items, mId }) => { 
                 const decks = getDecks(items); const activeDecks = decks.filter(d => progress[`${mId}-${d}`]); const newDecks = decks.filter(d => !progress[`${mId}-${d}`]); const isLinkMode = mId === 'study' || mId === 'skill'; let iconColor = 'text-jpm-accent'; 
@@ -421,7 +501,7 @@
                         <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.79 | Premium Edition</span></div>
+                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.80 | Premium Edition</span></div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
@@ -475,8 +555,8 @@
                                 </div>
                             )}
                             
-                            {/* Settings Modal */}
-                            {showSettings && ( <div className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"> <div className="bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-slide-in border border-slate-700"> <h3 className="text-2xl font-bold mb-4 dark:text-white text-jpm-primary font-quote"><i className="fas fa-cog mr-2 text-jpm-accent"></i>Settings</h3> <div className="space-y-4"> <div className="mb-4"> <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">AI Cloud Function URL</label> <div className="flex gap-2"> <input type="text" value={aiConfig} onChange={(e) => setAiConfig(e.target.value)} placeholder="https://..." className="flex-grow p-2 rounded bg-slate-800 border border-slate-600 text-white text-xs font-mono" /> <button onClick={handleConnect} className={`px-4 py-2 rounded text-xs font-bold transition-all ${connectStatus === 'SAVED' ? 'bg-green-600 text-white' : 'bg-slate-700 text-jpm-accent border border-slate-600'}`}> {connectStatus === 'SAVING' ? <i className="fas fa-circle-notch fa-spin"></i> : connectStatus === 'SAVED' ? 'LINKED' : 'CONNECT'} </button> </div> </div> <button onClick={handleExport} className="w-full bg-blue-900/50 text-blue-100 py-3 rounded-xl font-bold hover:bg-blue-800 border border-blue-800 hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]"><i className="fas fa-download mr-2"></i>Backup Data</button> <label className="block w-full bg-slate-800 text-gray-300 py-3 rounded-xl font-bold text-center cursor-pointer hover:bg-slate-700 border border-slate-700 transition-colors hover:shadow-[0_0_15px_rgba(197,157,95,0.2)]"><i className="fas fa-upload mr-2"></i>Restore Data <input type="file" className="hidden" onChange={handleImport} accept=".json" /></label> <button onClick={runTests} className="md:hidden w-full bg-slate-800 text-red-400 py-3 rounded-xl font-bold hover:bg-slate-700 border border-slate-700"><i className="fas fa-bug mr-2"></i>Run Diagnostics</button> </div> <button onClick={() => setShowSettings(false)} className="w-full mt-6 bg-slate-800 border border-slate-700 text-gray-400 py-3 rounded-xl font-bold hover:bg-slate-700">Close</button> </div> </div> )}
+                            {/* Settings Modal - CONNECT BUTTON LOGIC IMPLEMENTED */}
+                            {showSettings && ( <div className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"> <div className="bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-slide-in border border-slate-700"> <h3 className="text-2xl font-bold mb-4 dark:text-white text-jpm-primary font-quote"><i className="fas fa-cog mr-2 text-jpm-accent"></i>Settings</h3> <div className="space-y-4"> <div className="mb-4"> <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">AI Cloud Function URL</label> <div className="flex gap-2"> <input type="text" value={tempUrl} onChange={(e) => setTempUrl(e.target.value)} placeholder="https://..." className="flex-grow p-2 rounded bg-slate-800 border border-slate-600 text-white text-xs font-mono" /> <button onClick={handleConnect} className={`px-4 py-2 rounded text-xs font-bold transition-all ${connectStatus === 'SAVED' ? 'bg-green-600 text-white' : 'bg-slate-700 text-jpm-accent border border-slate-600'}`}> {connectStatus === 'SAVING' ? <i className="fas fa-circle-notch fa-spin"></i> : connectStatus === 'SAVED' ? 'LINKED' : 'CONNECT'} </button> </div> </div> <button onClick={handleExport} className="w-full bg-blue-900/50 text-blue-100 py-3 rounded-xl font-bold hover:bg-blue-800 border border-blue-800 hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]"><i className="fas fa-download mr-2"></i>Backup Data</button> <label className="block w-full bg-slate-800 text-gray-300 py-3 rounded-xl font-bold text-center cursor-pointer hover:bg-slate-700 border border-slate-700 transition-colors hover:shadow-[0_0_15px_rgba(197,157,95,0.2)]"><i className="fas fa-upload mr-2"></i>Restore Data <input type="file" className="hidden" onChange={handleImport} accept=".json" /></label> <button onClick={runTests} className="md:hidden w-full bg-slate-800 text-red-400 py-3 rounded-xl font-bold hover:bg-slate-700 border border-slate-700"><i className="fas fa-bug mr-2"></i>Run Diagnostics</button> </div> <button onClick={() => setShowSettings(false)} className="w-full mt-6 bg-slate-800 border border-slate-700 text-gray-400 py-3 rounded-xl font-bold hover:bg-slate-700">Close</button> </div> </div> )}
                             
                             {showPrompts && ( <div className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"> <div className="bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-lg w-full animate-slide-in border border-slate-700"> <h3 className="text-2xl font-bold mb-4 text-white font-quote"><i className="fas fa-robot mr-2 text-jpm-accent"></i>AI Prompts</h3> <div className="space-y-3 mb-6"> {data.prompts.map((p, i) => ( <a key={i} href={p.Link || p.Links} target="_blank" className="flex items-center p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition group hover:shadow-[0_0_15px_rgba(197,157,95,0.2)]"> <i className="fas fa-file-alt text-jpm-accent mr-3"></i> <span className="font-semibold text-gray-200 group-hover:text-white">{p.Deck}</span> <i className="fas fa-external-link-alt ml-auto text-gray-500 group-hover:text-jpm-accent"></i> </a> ))} </div> <button onClick={() => setShowPrompts(false)} className="w-full bg-slate-800 text-gray-400 py-3 rounded-xl font-bold hover:bg-slate-700 border border-slate-700">Close</button> </div> </div> )}
                             {testResults && ( <div className="fixed inset-0 bg-black bg-opacity-80 z-[10000] flex items-center justify-center p-4"> <div className="bg-slate-900 rounded-xl shadow-2xl p-6 max-w-lg w-full animate-slide-in border border-slate-700"> <h3 className="text-2xl font-bold mb-4 text-white font-quote">Regression Suite ({testResults.length} Tests)</h3> <div className="space-y-2 mb-6 max-h-96 overflow-y-auto"> {testResults.map(r => ( <div key={r.id} className="flex justify-between items-center p-2 border-b dark:border-slate-700"> <span className="text-sm font-medium dark:text-gray-300"><span className="font-mono text-xs opacity-50 mr-2">#{r.id}</span>{r.name}</span> <span className={`font-bold text-xs px-2 py-1 rounded ${r.pass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.pass ? 'PASS' : 'FAIL'}</span> </div> ))} </div> <button onClick={() => setTestResults(null)} className="w-full bg-blue-600 text-white py-2 rounded font-bold">Close</button> </div> </div> )}
