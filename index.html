@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.78</title>
+    <title>JP Morgan Interview Preparation App v20.79</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -809,15 +809,13 @@
 		// --- NEW MODULE: AI INTERVIEW MODE ---
      // --- GEMINI LIVE VOICE MODE ---
         const AIMode = ({ onEnd, toggleFocus, isFocusMode }) => {
-            const [status, setStatus] = useState("IDLE"); // IDLE, LISTENING, THINKING, SPEAKING
-            const [messages, setMessages] = useState([]); // Keep history for context, but don't show it
+            const [status, setStatus] = useState("IDLE"); 
+            const [messages, setMessages] = useState([]); 
             const [url, setUrl] = useState(localStorage.getItem('jpm_ai_url') || "");
             const [showConfig, setShowConfig] = useState(!localStorage.getItem('jpm_ai_url'));
             
-            // Audio Refs
             const recognitionRef = useRef(null);
             
-            // 1. END BUTTON LISTENER
             useEffect(() => {
                 const handleEndSignal = () => { stopEverything(); onEnd(0, []); };
                 window.addEventListener('jpm-trigger-end', handleEndSignal);
@@ -832,39 +830,26 @@
 
             const handleConnect = () => {
                 if (!url.trim()) return;
-                // Remove trailing slash if present
                 const cleanUrl = url.trim().replace(/\/$/, ""); 
                 localStorage.setItem('jpm_ai_url', cleanUrl);
                 setUrl(cleanUrl);
                 setShowConfig(false);
             };
 
-            // --- THE VOICE LOOP CORE ---
-            
             const startListening = () => {
                 if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return alert("Browser not supported");
-                
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 const recognition = new SpeechRecognition();
                 recognition.continuous = false;
                 recognition.interimResults = false;
-                recognition.lang = 'en-GB'; // British Accent Preference
+                recognition.lang = 'en-GB'; 
 
                 recognition.onstart = () => setStatus("LISTENING");
-                
                 recognition.onresult = (e) => {
                     const transcript = e.results[0][0].transcript;
-                    if (transcript.trim()) {
-                        sendMessage(transcript);
-                    }
+                    if (transcript.trim()) sendMessage(transcript);
                 };
-
-                recognition.onend = () => {
-                    // If we didn't switch to THINKING, it means silence. 
-                    // Optional: Auto-restart listening? For now, go IDLE to prevent loops.
-                    if (status === "LISTENING") setStatus("IDLE"); 
-                };
-
+                recognition.onend = () => { if (status === "LISTENING") setStatus("IDLE"); };
                 recognitionRef.current = recognition;
                 recognition.start();
             };
@@ -872,23 +857,12 @@
             const speakResponse = (text) => {
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
-                
-                // Select a British Voice if available
                 const voices = window.speechSynthesis.getVoices();
                 const gbVoice = voices.find(v => v.lang.includes('GB') || v.name.includes('UK'));
                 if (gbVoice) utterance.voice = gbVoice;
-                
-                utterance.rate = 1.1; // Slightly faster for conversational feel
-                
+                utterance.rate = 1.1; 
                 utterance.onstart = () => setStatus("SPEAKING");
-                
-                utterance.onend = () => {
-                    // *** THE LOOP: AUTO-LISTEN AFTER SPEAKING ***
-                    setTimeout(() => {
-                        startListening(); 
-                    }, 500); // 0.5s breathing room
-                };
-
+                utterance.onend = () => { setTimeout(() => { startListening(); }, 500); };
                 window.speechSynthesis.speak(utterance);
             };
 
@@ -915,13 +889,10 @@
                     });
 
                     if (!response.ok) throw new Error("Network response was not ok");
-                    
                     const data = await response.json();
                     const aiText = data.data?.text || "I didn't catch that.";
-                    
                     setMessages(prev => [...prev, { role: 'model', text: aiText }]);
                     speakResponse(aiText);
-
                 } catch (error) {
                     console.error(error);
                     setStatus("ERROR");
@@ -929,35 +900,31 @@
                 }
             };
 
-            // --- VISUAL UI ---
-
             return (
                 <div className="flex flex-col h-full w-full justify-center items-center relative overflow-hidden bg-black text-white">
-                    
-                    {/* Background Ambient Glow */}
+                    {/* Ambient Glow */}
                     <div className={`absolute inset-0 transition-opacity duration-1000 ${status === 'SPEAKING' ? 'opacity-100' : 'opacity-20'}`}>
                         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-900 rounded-full blur-[100px] opacity-30 animate-pulse"></div>
                     </div>
 
-                    {/* Status Indicator */}
-                    <div className="absolute top-6 left-0 right-0 text-center z-20">
-                        <button onClick={() => setShowConfig(!showConfig)} className="text-xs font-mono text-gray-500 hover:text-white uppercase tracking-[0.3em] transition">
-                            {status} • {showConfig ? 'CLOSE CONFIG' : 'CONFIG'}
+                    {/* FIXED CONFIG BUTTON (VISIBLE ALWAYS) */}
+                    <div className="fixed top-20 right-4 z-50">
+                        <button onClick={() => setShowConfig(!showConfig)} className="bg-slate-800/80 border border-slate-600 px-4 py-2 rounded-full text-xs font-bold hover:bg-slate-700 shadow-lg backdrop-blur-md transition-all flex items-center gap-2">
+                            <i className="fas fa-cog text-gray-400"></i> {status}
                         </button>
                     </div>
 
                     {/* Config Modal */}
                     {showConfig && (
-                        <div className="absolute top-16 z-50 bg-slate-900/90 border border-slate-700 p-6 rounded-2xl backdrop-blur-md animate-slide-in">
-                            <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste Cloud Function URL" className="bg-black/50 border border-slate-600 rounded p-2 text-white w-64 text-xs font-mono mb-2 block" />
-                            <button onClick={handleConnect} className="w-full bg-white text-black font-bold text-xs py-2 rounded hover:bg-gray-200">CONNECT</button>
+                        <div className="fixed top-32 right-4 z-50 bg-slate-900 border border-jpm-accent p-6 rounded-2xl shadow-2xl animate-slide-in w-80">
+                            <h3 className="text-jpm-accent font-bold mb-2">Neural Link</h3>
+                            <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste Cloud Function URL" className="bg-black/50 border border-slate-600 rounded p-2 text-white w-full text-xs font-mono mb-3 block" />
+                            <button onClick={handleConnect} className="w-full bg-jpm-accent text-black font-bold text-xs py-2 rounded hover:bg-[#b08d55]">CONNECT</button>
                         </div>
                     )}
 
-                    {/* CENTRAL ORB INTERFACE */}
+                    {/* ORB INTERFACE */}
                     <div className="relative z-10 flex flex-col items-center gap-8">
-                        
-                        {/* The Orb */}
                         <div className={`relative w-48 h-48 md:w-64 md:h-64 rounded-full flex items-center justify-center transition-all duration-500 
                             ${status === 'LISTENING' ? 'scale-110 shadow-[0_0_50px_rgba(59,130,246,0.6)] border-4 border-blue-500' : ''}
                             ${status === 'SPEAKING' ? 'scale-105 shadow-[0_0_50px_rgba(197,157,95,0.6)] border-4 border-[#C59D5F]' : ''}
@@ -965,7 +932,6 @@
                             ${status === 'IDLE' ? 'scale-100 border-2 border-slate-700 opacity-50' : ''}
                             ${status === 'ERROR' ? 'border-4 border-red-500 shadow-[0_0_30px_red]' : ''}
                         `}>
-                            {/* Inner Core */}
                             <div className={`w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden`}>
                                 {status === 'LISTENING' && <div className="w-24 h-24 bg-blue-500 rounded-full animate-ping opacity-20"></div>}
                                 {status === 'SPEAKING' && (
@@ -980,7 +946,6 @@
                             </div>
                         </div>
 
-                        {/* Controls */}
                         {status === 'IDLE' && (
                             <button onClick={startListening} className="bg-white text-black px-8 py-4 rounded-full font-bold tracking-widest hover:scale-105 transition shadow-xl">
                                 TAP TO SPEAK
@@ -991,17 +956,14 @@
                                 STOP SESSION
                             </button>
                         )}
-                        
                     </div>
-
-                    {/* Minimal Subtitles (Optional - Hidden by default unless speaking) */}
+                    
+                    {/* Subtitles */}
                     <div className="absolute bottom-10 px-8 text-center w-full max-w-2xl">
                         <p className={`text-lg md:text-xl font-light leading-relaxed transition-opacity duration-500 ${status === 'SPEAKING' ? 'opacity-100 text-white' : 'opacity-0'}`}>
                             {messages.length > 0 ? messages[messages.length - 1].text : ''}
                         </p>
-                        {status === 'LISTENING' && <p className="text-blue-400 font-mono text-sm animate-pulse">Listening...</p>}
                     </div>
-
                 </div>
             );
         };
@@ -1303,7 +1265,7 @@
                         <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.78 | Premium Edition</span></div>
+                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.79 | Premium Edition</span></div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
@@ -1369,7 +1331,6 @@
                             {(mode === 'flashcard' || mode === 'vocab') && activeDeck && ( <ComponentSandbox> <FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
                             {(mode === 'type') && activeDeck && ( <ComponentSandbox> <TypeMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
                             {(mode === 'mcq') && activeDeck && ( <ComponentSandbox> <MCQMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
-							//AI Mode
 							{(mode === 'ai_interview') && ( <ComponentSandbox> <AIMode key={sessionKey} onEnd={endSession} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
                         </main>
                         {!focusMode && <MobileNavBar currentMode={mode} setMode={setMode} onPrompt={() => setShowPrompts(true)} onSettings={() => setShowSettings(true)} />}
@@ -1383,6 +1344,7 @@
     </script>
 </body>
 </html>
+
 
 
 
