@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.81</title>
+    <title>JP Morgan Interview Preparation App v20.82</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -827,10 +827,11 @@
             );
         };
 		
-		// --- NEW MODULE: AI INTERVIEW MODE ---
+		// ---START AI MODE ---
      // --- GEMINI LIVE VOICE MODE ---
         const AIMode = ({ onEnd, toggleFocus, isFocusMode }) => {
             const [status, setStatus] = useState("IDLE"); 
+			const [thinkingMode, setThinkingMode] = useState("low"); //default thinking mode
             const [messages, setMessages] = useState([]); 
             const [url, setUrl] = useState(localStorage.getItem('jpm_ai_url') || "");
             const [showConfig, setShowConfig] = useState(!localStorage.getItem('jpm_ai_url'));
@@ -887,45 +888,48 @@
                 window.speechSynthesis.speak(utterance);
             };
 
-            /* --- AI CONVERSATION HISTORY UPDATE SATNAM --- */
-const sendMessage = async (text) => {
-    setStatus("THINKING");
-    const userMsg = { role: 'user', text };
-    
-    // 1. Immediately update UI to show user's message so it doesn't "disappear"
-    const updatedHistory = [...messages, userMsg];
-    setMessages(updatedHistory);
+			            /* --- AI CONVERSATION HISTORY UPDATE SATNAM --- */
+			const sendMessage = async (text) => {
+			    setStatus("THINKING");
+			    const userMsg = { role: 'user', text };
+			    
+			    // 1. Immediately update UI to show user's message so it doesn't "disappear"
+			    const updatedHistory = [...messages, userMsg];
+			    setMessages(updatedHistory);
+			
+			    try {
 
-    try {
-        const payload = {
-            data: {
-                message: text,
-                sessionID: "voice-session-" + new Date().getTime(),
-                // 2. Send the FULL history so the AI remembers the conversation
-                history: updatedHistory.map(m => ({
-                    role: m.role === 'model' ? 'ai' : 'user', 
-                    text: m.text
-                }))
-            }
-        };
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await response.json();
-        const aiText = data.data?.text || "I'm having trouble connecting to the panel.";
-        
-        // 3. Append the AI response to the existing history
-        setMessages(prev => [...prev, { role: 'model', text: aiText }]);
-        speakResponse(aiText);
-    } catch (error) {
-        console.error(error);
-        setStatus("ERROR");
-    }
-};
+					/* --- START THINKING TOGGLE IMPLEMENTATION --- */
+					const payload = {
+					    data: {
+					        message: text,
+					        sessionID: "voice-session-" + new Date().getTime(),
+					        history: updatedHistory.map(m => ({
+					            role: m.role === 'model' ? 'ai' : 'user', 
+					            text: m.text
+					        })),
+							
+					        thinking_level: thinkingMode //Taking input from screen for thinking mode 
+					    }
+					};
+			
+			        const response = await fetch(url, {
+			            method: 'POST',
+			            headers: { 'Content-Type': 'application/json' },
+			            body: JSON.stringify(payload)
+			        });
+			
+			        const data = await response.json();
+			        const aiText = data.data?.text || "I'm having trouble connecting to the panel.";
+			        
+			        // 3. Append the AI response to the existing history
+			        setMessages(prev => [...prev, { role: 'model', text: aiText }]);
+			        speakResponse(aiText);
+			    } catch (error) {
+			        console.error(error);
+			        setStatus("ERROR");
+			    }
+			};
 
             /* --- REPLACE EVERYTHING FROM LINE 513 TO 572 WITH THIS --- */
 			return (
@@ -970,6 +974,23 @@ const sendMessage = async (text) => {
 			                    <button onClick={handleConnect} className="w-full bg-jpm-accent text-black font-bold text-[10px] py-2 rounded">SYNC</button>
 			                </div>
 			            )}
+					
+						{/* LEFT PANEL: The Animated AI Orb (The "Brain")'s THINKING TOGGLE BUTTON */}	
+						<div className="flex items-center justify-between w-full px-4 mt-8 bg-slate-800/40 p-4 rounded-2xl border border-slate-700 shadow-inner">
+							<div className="flex flex-col text-left">
+								<span className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest">Logic Depth</span>
+								<span className={`text-[11px] font-bold font-mono transition-colors ${thinkingMode === 'high' ? 'text-purple-400' : 'text-jpm-accent'}`}>
+									{thinkingMode === 'high' ? 'VP PANEL MODE' : 'SPEED DRILL'}
+								</span>
+							</div>
+							<button 
+								onClick={() => setThinkingMode(prev => prev === 'high' ? 'low' : 'high')}
+								className={`w-12 h-6 rounded-full relative transition-all duration-300 shadow-lg ${thinkingMode === 'high' ? 'bg-purple-600 shadow-purple-500/20' : 'bg-slate-600'}`}
+							>
+								<div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 shadow-sm ${thinkingMode === 'high' ? 'translate-x-7' : 'translate-x-1'}`}></div>
+							</button>
+						</div>
+						
 			        </div>
 			
 			        {/* RIGHT PANEL: The Persistent Transcript (The "History") */}
@@ -1007,6 +1028,8 @@ const sendMessage = async (text) => {
 			    </div>
 			);
         };
+
+		//END AI MODE
 
         const App = () => {
             const [data, setData] = useState({ flashcards: [], type: [], mcq: [], study: [], prompts: [], skills: [], vocab: [] });
@@ -1332,7 +1355,7 @@ const sendMessage = async (text) => {
                         <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.81 | Premium Edition</span></div>
+                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.82 | Premium Edition</span></div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
@@ -1411,6 +1434,7 @@ const sendMessage = async (text) => {
     </script>
 </body>
 </html>
+
 
 
 
