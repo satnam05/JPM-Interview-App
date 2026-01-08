@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.74</title>
+    <title>JP Morgan Interview Preparation App v20.75</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -805,6 +805,164 @@
                 </div>
             );
         };
+		
+		// --- NEW MODULE: AI INTERVIEW MODE ---
+        const AIMode = ({ onEnd, toggleFocus, isFocusMode }) => {
+            const [messages, setMessages] = useState([{ role: 'model', text: "Hello. I am your J.P. Morgan Interview Coach. I have your resume and the job description. Ready to begin?" }]);
+            const [input, setInput] = useState("");
+            const [loading, setLoading] = useState(false);
+            const [url, setUrl] = useState(localStorage.getItem('jpm_ai_url') || "");
+            const [isConnected, setIsConnected] = useState(!!localStorage.getItem('jpm_ai_url'));
+            const [showConfig, setShowConfig] = useState(!localStorage.getItem('jpm_ai_url'));
+            const [isRecording, setIsRecording] = useState(false);
+            const recognitionRef = useRef(null);
+            const scrollRef = useRef(null);
+
+            useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages]);
+
+            const handleConnect = () => {
+                if (!url.trim()) return;
+                localStorage.setItem('jpm_ai_url', url);
+                setIsConnected(true);
+                setShowConfig(false);
+            };
+
+            const toggleRecording = () => {
+                if (isRecording) {
+                    if (recognitionRef.current) recognitionRef.current.stop();
+                    setIsRecording(false);
+                } else {
+                    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return alert("Browser not supported");
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    const recognition = new SpeechRecognition();
+                    recognition.continuous = false;
+                    recognition.interimResults = false;
+                    recognition.lang = 'en-US';
+                    recognition.onresult = (e) => {
+                        const transcript = e.results[0][0].transcript;
+                        setInput(prev => prev + (prev ? " " : "") + transcript);
+                    };
+                    recognition.onend = () => setIsRecording(false);
+                    recognitionRef.current = recognition;
+                    recognition.start();
+                    setIsRecording(true);
+                }
+            };
+
+            const sendMessage = async () => {
+                if (!input.trim() || !url) return;
+                const userMsg = { role: 'user', text: input };
+                setMessages(prev => [...prev, userMsg]);
+                setInput("");
+                setLoading(true);
+
+                try {
+                    // Send entire history to maintain context
+                    const payload = {
+                        data: {
+                            message: input,
+                            sessionID: "session-" + new Date().getTime(),
+                            currentStage: "General", 
+                            history: messages.slice(-5) // Keep last 5 turns for context
+                        }
+                    };
+                    
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error("AI Connection Failed");
+                    
+                    const data = await response.json();
+                    const aiText = data.data?.text || "I'm having trouble connecting to the brain.";
+                    
+                    setMessages(prev => [...prev, { role: 'model', text: aiText }]);
+                    SpeechManager.speak(aiText); // Fluent Voice Output
+
+                } catch (error) {
+                    setMessages(prev => [...prev, { role: 'model', text: "⚠️ Connection Error. Please check your URL." }]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-full w-full max-w-5xl mx-auto px-4 pt-4 md:pb-safe text-white">
+                    {/* Header / Config Bar */}
+                    <div className="glass-panel rounded-2xl p-4 mb-4 flex flex-col md:flex-row justify-between items-center gap-4 flex-shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full animate-pulse ${isConnected ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-red-500'}`}></div>
+                            <h2 className="font-quote text-lg font-bold text-jpm-accent">JPM AI Interviewer <span className="text-xs font-mono text-gray-500 opacity-70 ml-2">LIVE</span></h2>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                            {showConfig ? (
+                                <div className="flex gap-2 w-full animate-slide-in">
+                                    <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Enter Cloud Function URL..." className="bg-slate-900 border border-slate-700 rounded px-3 py-1 text-xs w-full md:w-64 focus:border-jpm-accent outline-none font-mono text-gray-300" />
+                                    <button onClick={handleConnect} className="bg-green-700 hover:bg-green-600 text-white px-3 py-1 rounded text-xs font-bold transition">LINK</button>
+                                </div>
+                            ) : (
+                                <button onClick={() => setShowConfig(true)} className="text-xs font-mono text-green-400 hover:text-white transition flex items-center gap-2 border border-green-900 bg-green-900/20 px-3 py-1 rounded">
+                                    <i className="fas fa-link"></i> CONNECTED
+                                </button>
+                            )}
+                            <button onClick={toggleFocus} className="p-2 hover:bg-slate-700 rounded-full transition text-gray-400"><i className={isFocusMode ? "fas fa-compress" : "fas fa-expand"}></i></button>
+                        </div>
+                    </div>
+
+                    {/* Chat Area */}
+                    <div ref={scrollRef} className="flex-grow overflow-y-auto space-y-4 pr-2 mb-4 scrollbar-thin scrollbar-thumb-slate-700">
+                        {messages.map((m, i) => (
+                            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in`}>
+                                <div className={`max-w-[85%] md:max-w-[70%] p-4 rounded-2xl text-sm md:text-base leading-relaxed shadow-lg ${
+                                    m.role === 'user' 
+                                    ? 'bg-jpm-primary border border-blue-900 text-blue-50 rounded-tr-none' 
+                                    : 'bg-slate-800 border border-slate-700 text-gray-200 rounded-tl-none'
+                                }`}>
+                                    <div className="mb-1 flex items-center gap-2 opacity-50 text-[10px] font-bold uppercase tracking-wider font-mono">
+                                        {m.role === 'user' ? <><i className="fas fa-user"></i> Candidate</> : <><i className="fas fa-robot text-jpm-accent"></i> JPM AI</>}
+                                    </div>
+                                    <div className="whitespace-pre-wrap font-sans">{m.text}</div>
+                                </div>
+                            </div>
+                        ))}
+                        {loading && (
+                            <div className="flex justify-start animate-pulse">
+                                <div className="bg-slate-800/50 p-4 rounded-2xl rounded-tl-none flex gap-2 items-center border border-slate-700/50">
+                                    <div className="w-2 h-2 bg-jpm-accent rounded-full animate-bounce"></div>
+                                    <div className="w-2 h-2 bg-jpm-accent rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                                    <div className="w-2 h-2 bg-jpm-accent rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Controls */}
+                    <div className="glass-panel p-4 rounded-2xl flex items-end gap-3 flex-shrink-0 border-t border-slate-700">
+                        <button onClick={toggleRecording} className={`p-4 rounded-full transition-all shadow-lg hover:scale-105 active:scale-95 flex-shrink-0 ${isRecording ? 'bg-red-600 text-white animate-pulse shadow-red-500/50' : 'bg-slate-700 text-jpm-accent hover:bg-slate-600 border border-slate-600'}`}>
+                            <i className={`fas ${isRecording ? 'fa-stop' : 'fa-microphone'} text-xl`}></i>
+                        </button>
+                        <textarea 
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                            placeholder={isConnected ? "Type or speak your answer..." : "Please connect API URL above..."}
+                            className="flex-grow bg-slate-900/50 border border-slate-700 rounded-xl p-3 text-white placeholder-gray-500 focus:outline-none focus:border-jpm-accent transition resize-none h-14"
+                            disabled={!isConnected}
+                        />
+                        <button onClick={sendMessage} disabled={!isConnected || loading} className="p-4 bg-jpm-accent text-slate-900 rounded-xl font-bold hover:bg-[#b08d55] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#C59D5F]/20 transition-all hover:scale-105 active:scale-95">
+                            <i className="fas fa-paper-plane text-lg"></i>
+                        </button>
+                    </div>
+                    
+                    <button onClick={() => onEnd(0, [])} className="mt-4 mx-auto text-xs text-gray-500 hover:text-white transition flex items-center gap-2">
+                        <i className="fas fa-arrow-left"></i> Return to Menu
+                    </button>
+                </div>
+            );
+        };
 
         const App = () => {
             const [data, setData] = useState({ flashcards: [], type: [], mcq: [], study: [], prompts: [], skills: [], vocab: [] });
@@ -971,7 +1129,8 @@
             const togglePressureMode = () => { const newVal = !pressureMode; setPressureMode(newVal); const newP = { ...progress, _settings: { ...(progress._settings || {}), pressureMode: newVal } }; setProgress(newP); localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(newP)); };
             
             const startSession = (m, deckName, specificQueue = null) => { 
-                const map = { 'flashcard': 'flashcards', 'type': 'type', 'mcq': 'mcq', 'study': 'study', 'skill': 'skills', 'vocab': 'vocab' }; 
+                const map = { 'flashcard': 'flashcards', 'type': 'type', 'mcq': 'mcq', 'study': 'study', 'skill': 'skills', 'vocab': 'vocab', 'ai_interview': 'prompts' }; 
+				// Note: We map to 'prompts' just to ensure a valid data array is returned, though AIMode doesn't use it.
                 let deck = specificQueue || data[map[m]].filter(d => d.Deck === deckName); 
                 if(deck.length === 0) return; 
                 if (m === 'study' || m === 'skill') { 
@@ -1054,6 +1213,7 @@
 
             // FIX: Premium Tile Headers with Gold Accents
             const menuTiles = [ 
+				{ id: 'ai_interview', title: 'AI Mock Interview', icon: 'fa-headset', items: [{ Deck: 'Start Live Session' }] }, // NEW TILE
                 { id: 'study', title: 'Knowledge Base', icon: 'fa-book-open', items: data.study }, 
                 { id: 'flashcard', title: 'Concept Drill', icon: 'fa-layer-group', items: data.flashcards }, 
                 { id: 'type', title: 'Mock Interview', icon: 'fa-keyboard', items: data.type }, 
@@ -1072,7 +1232,7 @@
                         <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.74 | Premium Edition</span></div>
+                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.75 | Premium Edition</span></div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
@@ -1138,6 +1298,8 @@
                             {(mode === 'flashcard' || mode === 'vocab') && activeDeck && ( <ComponentSandbox> <FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
                             {(mode === 'type') && activeDeck && ( <ComponentSandbox> <TypeMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
                             {(mode === 'mcq') && activeDeck && ( <ComponentSandbox> <MCQMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
+							//AI Mode
+							{(mode === 'ai_interview') && ( <ComponentSandbox> <AIMode key={sessionKey} onEnd={endSession} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
                         </main>
                         {!focusMode && <MobileNavBar currentMode={mode} setMode={setMode} onPrompt={() => setShowPrompts(true)} onSettings={() => setShowSettings(true)} />}
                     </div>
