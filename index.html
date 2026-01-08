@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.75</title>
+    <title>JP Morgan Interview Preparation App v20.76</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -1123,8 +1123,6 @@
             // Forced Dark Mode
             useEffect(() => { document.documentElement.classList.add('dark'); document.documentElement.classList.remove('light'); }, []);
 
-           //Changed for AI by Satnam - const handleDeckClick = (m, deckName) => { const p = progress[`${m}-${deckName}`]; if (p && p.status === 'Completed') { setModalDeck({ mode: m, name: deckName, stats: p }); } else if (p && p.status === 'In Progress' && p.queue && p.queue.length > 0) { startSession(m, deckName, p.queue); } else { startSession(m, deckName); } };
-
             const handleDeckClick = (m, deckName) => { 
                 // NEW: Catch the AI mode click immediately
                 if (m === 'ai_interview') {
@@ -1251,7 +1249,7 @@
                         <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.75 | Premium Edition</span></div>
+                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.76 | Premium Edition</span></div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
@@ -1331,4 +1329,5 @@
     </script>
 </body>
 </html>
+
 
