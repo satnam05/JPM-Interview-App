@@ -961,10 +961,19 @@
 			                ${status === 'IDLE' ? 'border-2 border-slate-700 opacity-60' : ''}
 			            `}>
 			                <div className="w-full h-full rounded-full bg-gradient-to-br from-slate-900 to-black flex items-center justify-center">
-			                    {status === 'LISTENING' && <div className="w-16 h-16 bg-blue-500 rounded-full animate-ping opacity-30"></div>}
-			                    {status === 'SPEAKING' && <i className="fas fa-volume-up text-4xl text-jpm-accent animate-pulse"></i>}
-			                    {status === 'THINKING' && <i className="fas fa-microchip text-4xl text-purple-400 animate-spin"></i>}
-			                    {status === 'IDLE' && <i className="fas fa-microphone-slash text-4xl text-slate-700"></i>}
+							/* --- AI ORB EMOJIS --- */
+								{status === 'IDLE' && (
+								    <div className="text-6xl animate-[matrix-glitch_4s_infinite] select-none">📟</div>
+								)}
+								{status === 'LISTENING' && (
+								    <div className="text-6xl animate-pulse select-none">🎙️</div>
+								)}
+								{status === 'THINKING' && (
+								    <div className="text-6xl animate-[brain-glow_1.5s_infinite] select-none">🧠</div>
+								)}
+								{status === 'SPEAKING' && (
+								    <div className="text-6xl animate-bounce select-none">🤖</div>
+								)}
 			                </div>
 			            </div>
 			
@@ -1447,6 +1456,7 @@
     </script>
 </body>
 </html>
+
 
 
 
