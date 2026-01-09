@@ -918,17 +918,37 @@
                 recognition.start();
             };
 
-            const speakResponse = (text) => {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                const voices = window.speechSynthesis.getVoices();
-                const gbVoice = voices.find(v => v.lang.includes('GB') || v.name.includes('UK'));
-                if (gbVoice) utterance.voice = gbVoice;
-                utterance.rate = 1.1; 
-                utterance.onstart = () => setStatus("SPEAKING");
-                utterance.onend = () => { setTimeout(() => { startListening(); }, 500); };
-                window.speechSynthesis.speak(utterance);
-            };
+				/* Enhanced voice selection logic. Prioritizes 'Natural' and 'Premium' 
+			   high-fidelity voices provided by the OS to reduce the robotic sound. */
+			const speakResponse = (text) => {
+
+				// Adding micro-pauses for more natural, human-like breath rhythm
+				const smoothedText = text.replace(/,/g, ', ...').replace(/\./g, '. ...');
+				const utterance = new SpeechSynthesisUtterance(smoothedText);
+				
+			    window.speechSynthesis.cancel();
+			    const utterance = new SpeechSynthesisUtterance(text);
+			    const voices = window.speechSynthesis.getVoices();
+			
+			    // Strategy: Look for "Natural", "Google", or "Siri" voices which are higher quality
+			    let preferredVoice = voices.find(v => v.name.includes('Natural') && v.lang.startsWith('en-GB')) ||
+			                         voices.find(v => v.name.includes('Google UK English Female')) ||
+			                         voices.find(v => v.name.includes('Siri')) ||
+			                         voices.find(v => v.lang === 'en-GB' && v.name.includes('Daniel'));
+			
+			    if (preferredVoice) {
+			        utterance.voice = preferredVoice;
+			        utterance.lang = preferredVoice.lang;
+			    }
+			
+			    // Tuning for Human Rhythm: Slightly slower rate and neutral pitch
+			    utterance.rate = 0.95; 
+			    utterance.pitch = 1.0; 
+			    
+			    utterance.onstart = () => setStatus("SPEAKING");
+			    utterance.onend = () => { setTimeout(() => { startListening(); }, 500); };
+			    window.speechSynthesis.speak(utterance);
+			};
 
 			            /* --- AI CONVERSATION HISTORY UPDATE SATNAM --- */
 			const sendMessage = async (text) => {
@@ -1629,6 +1649,7 @@
     </script>
 </body>
 </html>
+
 
 
 
