@@ -1093,7 +1093,15 @@
                     const audioUrl = URL.createObjectURL(blob);
                     const audio = new Audio(audioUrl);
                     audio.onplay = () => setStatus("SPEAKING");
-                    audio.onended = () => { setStatus("IDLE"); URL.revokeObjectURL(audioUrl); setTimeout(() => startListening(), 400); };
+                    /* Continuous AI Flow Fix. 
+                        Removes the flicker to IDLE after speaking, keeping the UI in a 
+                        professional 'ready' state for Satnam's next response. */
+                    audio.onended = () => {
+                        URL.revokeObjectURL(audioUrl);
+                        // Directly transition from SPEAKING to LISTENING without hitting IDLE
+                        startListening();
+                    };
+                    
                     audio.onerror = (e) => { console.error("DEBUG: Audio Playback Error:", e); setStatus("IDLE"); };
                     await audio.play();
                 } catch (e) {
