@@ -1002,12 +1002,13 @@
                             'bg-slate-800/40 shadow-inner'}`}>
                             
                             <div className={`w-36 h-36 rounded-full border-2 border-white/10 flex items-center justify-center overflow-hidden bg-slate-950 ${status === 'LISTENING' ? 'animate-pulse' : ''}`}>
-                                {/* FIX: Nested container with overflow-hidden prevents square rotation edges */}
-                                <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center relative">
+                            {/* PREMIUM CIRCULAR MASK: This forced rounding ensures no square edges can ever show */}
+                                <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center relative bg-black/20">
                                     <div className={`text-6xl select-none flex items-center justify-center w-full h-full transition-all duration-500 ${
-                                        status === 'IDLE' ? 'animate-[ai-glow-idle_10s_linear_infinite]' : 
-                                        status === 'THINKING' ? 'animate-[brain-think_2s_infinite]' : 'filter drop-shadow-lg'}`}>
-                                        {status === 'SPEAKING' ? '🤖' : status === 'LISTENING' ? '🎙️' : status === 'THINKING' ? '🧠' : '⚛️'}
+                                        status === 'IDLE' ? 'animate-[ai-glow-idle_12s_linear_infinite]' : 
+                                        status === 'THINKING' ? 'animate-[brain-think_2.5s_infinite]' : 'filter drop-shadow-lg'}`}>
+                                        {/* CHANGED IDLE EMOJI TO STANDALONE DIAMOND FOR BETTER ROTATION */}
+                                        {status === 'SPEAKING' ? '🤖' : status === 'LISTENING' ? '🎙️' : status === 'THINKING' ? '🧠' : '💠'}
                                     </div>
                                 </div>
                             </div>
