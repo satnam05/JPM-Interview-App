@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.88</title>
+    <title>JP Morgan Interview Preparation App v20.89</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -105,39 +105,30 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
 
-		/* AI Orb Animation added by Satnam */
-		@keyframes orb-pulse {
-		    0% { transform: scale(1); box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
-		    50% { transform: scale(1.05); box-shadow: 0 0 40px rgba(59, 130, 246, 0.8); }
-		    100% { transform: scale(1); box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
-		}
-		@keyframes orb-think {
-		    0% { filter: hue-rotate(0deg) brightness(1); }
-		    50% { filter: hue-rotate(90deg) brightness(1.3); transform: rotate(5deg); }
-		    100% { filter: hue-rotate(0deg) brightness(1); }
-		}
-		@keyframes orb-speak {
-		    0% { border-radius: 50%; }
-		    25% { border-radius: 45% 55% 50% 50%; }
-		    50% { border-radius: 50% 50% 55% 45%; }
-		    75% { border-radius: 55% 45% 50% 50%; }
-		    100% { border-radius: 50%; }
-		}
+		/* ---START -- PREMIUM AI ORB ANIMATIONS: RESTORED WOBBLE & HALO --- 
+            These keyframes provide the organic, non-square movement for 
+            Listening, Speaking, and the gold rotation for Idle. */
 
-		/* AI ORB EMOJIS ANIMATION */
+        @keyframes orb-wobble {
+            0% { border-radius: 50%; transform: scale(1); }
+            33% { border-radius: 42% 58% 50% 50%; transform: scale(1.03); }
+            66% { border-radius: 50% 50% 58% 42%; transform: scale(0.97); }
+            100% { border-radius: 50%; transform: scale(1); }
+        }
 
-		/* CONTEXT: High-fidelity glowing pulse for AI Orb at Idle */
-		@keyframes ai-glow-idle {
-		    0% { filter: drop-shadow(0 0 5px #C59D5F) brightness(1); transform: scale(1); }
-		    50% { filter: drop-shadow(0 0 25px #C59D5F) brightness(1.4); transform: scale(1.05); }
-		    100% { filter: drop-shadow(0 0 5px #C59D5F) brightness(1); transform: scale(1); }
-		}
-		
-		@keyframes brain-glow {
-		    0% { box-shadow: 0 0 10px #8b5cf6; }
-		    50% { box-shadow: 0 0 40px #a78bfa, 0 0 60px #8b5cf6; }
-		    100% { box-shadow: 0 0 10px #8b5cf6; }
-		}
+        @keyframes ai-glow-idle {
+            0% { filter: drop-shadow(0 0 5px #C59D5F); transform: rotate(0deg) scale(1); }
+            50% { filter: drop-shadow(0 0 25px #C59D5F) brightness(1.3); transform: rotate(180deg) scale(1.05); }
+            100% { filter: drop-shadow(0 0 5px #C59D5F); transform: rotate(360deg) scale(1); }
+        }
+
+        @keyframes brain-think {
+            0% { filter: hue-rotate(0deg) brightness(1); transform: scale(1) rotate(0deg); }
+            50% { filter: hue-rotate(90deg) brightness(1.5); transform: scale(1.15) rotate(15deg); }
+            100% { filter: hue-rotate(0deg) brightness(1); transform: scale(1) rotate(0deg); }
+        }
+
+        /* ---END -- PREMIUM AI ORB ANIMATIONS */
 		
         .card-content { flex-grow: 1; overflow-y: scroll; padding: 1.5rem; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
         .card-face.front { transform: rotateY(0deg); }
@@ -989,32 +980,39 @@
 
 			        <div className="w-1/3 border-r border-slate-800 flex flex-col items-center justify-center p-6 bg-slate-900/50 relative">
 
-						{/* CONTEXT: Re-positioning Status Text from Absolute to Relative to prevent Orb overlap */}
-						<div className="flex flex-col items-center mb-8">
-						    <span className="text-jpm-accent font-mono text-[10px] tracking-[0.3em] uppercase opacity-70 mb-2">
-						        System Interface
-						    </span>
-						    <div className={`px-3 py-1 rounded-full border text-[11px] font-bold font-mono transition-all duration-300 ${
-						        status === 'LISTENING' ? 'bg-blue-900/30 border-blue-500 text-blue-400' :
-						        status === 'THINKING' ? 'bg-purple-900/30 border-purple-500 text-purple-400' :
-						        status === 'SPEAKING' ? 'bg-jpm-accent/20 border-jpm-accent text-jpm-accent' :
-						        'bg-slate-800 border-slate-700 text-slate-500'
-						    }`}>
-						        {status}
-						    </div>
-						</div>
+						{/* CONTEXT: Cleaned UI for premium focus. Removed redundant System Interface label. */}
+                        <div className="flex flex-col items-center mb-8">
+                            <div className={`px-3 py-1 rounded-full border text-[11px] font-bold font-mono transition-all duration-300 ${
+                                status === 'LISTENING' ? 'bg-blue-900/30 border-blue-500 text-blue-400' :
+                                status === 'THINKING' ? 'bg-purple-900/30 border-purple-500 text-purple-400' :
+                                status === 'SPEAKING' ? 'bg-jpm-accent/20 border-jpm-accent text-jpm-accent' :
+                                'bg-slate-800 border-slate-700 text-slate-500'
+                            }`}>
+                                {status}
+                            </div>
+                        </div>
 			            
-			            {/* THE DYNAMIC ORB */}
+			            {/* START - THE DYNAMIC PREMIUM ORB - ALL STATES ENHANCED */}
+                        <div className={`relative w-48 h-48 rounded-full flex items-center justify-center transition-all duration-700 shadow-2xl ${
+                            status === 'LISTENING' ? 'bg-blue-500/20 shadow-[0_0_60px_rgba(59,130,246,0.6)] animate-[orb-wobble_3s_infinite]' : 
+                            status === 'SPEAKING' ? 'bg-jpm-accent/30 shadow-[0_0_60px_rgba(197,157,95,0.6)] animate-[orb-wobble_1.5s_infinite]' : 
+                            status === 'THINKING' ? 'bg-purple-500/20 shadow-[0_0_60px_rgba(168,85,247,0.6)]' :
+                            'bg-slate-800/40 shadow-inner'}`}>
+                            
+                            <div className={`w-36 h-36 rounded-full border-2 border-white/10 flex items-center justify-center overflow-hidden bg-slate-950 ${status === 'LISTENING' ? 'animate-pulse' : ''}`}>
+                                <div className={`text-6xl rounded-full select-none flex items-center justify-center w-full h-full transition-all duration-500 ${
+                                    status === 'IDLE' ? 'animate-[ai-glow-idle_6s_linear_infinite]' : 
+                                    status === 'THINKING' ? 'animate-[brain-think_2s_infinite]' : 'filter drop-shadow-lg'}`}>
+                                    {status === 'SPEAKING' ? '🤖' : status === 'LISTENING' ? '🎙️' : status === 'THINKING' ? '🧠' : '⚛️'}
+                                </div>
+                            </div>
+                            
+                            {/* Dynamic Ping-Rings */}
+                            {status === 'SPEAKING' && <div className="absolute inset-0 rounded-full border-2 border-jpm-accent/40 animate-ping"></div>}
+                            {status === 'LISTENING' && <div className="absolute inset-0 rounded-full border-2 border-blue-400/30 animate-pulse"></div>}
+                        </div>
 
-						<div className={`relative w-48 h-48 rounded-full flex items-center justify-center transition-all duration-700 ${
-    						status === 'LISTENING' ? 'bg-blue-500/20 shadow-[0_0_50px_rgba(59,130,246,0.4)]' : 
-    						status === 'SPEAKING' ? 'bg-jpm-accent/20 shadow-[0_0_50px_rgba(197,157,95,0.4)]' : 'bg-slate-800/40'}`}>
-    						<div className={`w-36 h-36 rounded-full border-2 border-white/10 flex items-center justify-center overflow-hidden bg-slate-950 ${status === 'LISTENING' ? 'animate-pulse' : ''}`}>
-        						<div className="text-6xl filter drop-shadow-lg rounded-full select-none flex items-center justify-center">
-            					{status === 'SPEAKING' ? '🤖' : status === 'LISTENING' ? '🎙️' : status === 'THINKING' ? '🧠' : '⚛️'}
-        						</div>
-							</div>
-    					</div>
+                        {/* END - THE DYNAMIC PREMIUM ORB */}
 			
 			            <div className="mt-12 flex flex-col gap-4 w-full px-4">
 			                {status === 'IDLE' ? (
@@ -1510,7 +1508,7 @@
                         <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.88 | Premium Edition</span></div>
+                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.89 | Premium Edition</span></div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
