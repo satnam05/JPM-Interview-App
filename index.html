@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.85</title>
+    <title>JP Morgan Interview Preparation App v20.86</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -871,7 +871,7 @@
 		
 		// ---START AI MODE ---
      // --- GEMINI LIVE VOICE MODE ---
-        const AIMode = ({ onEnd, toggleFocus, isFocusMode }) => {
+        const AIMode = ({ onEnd, toggleFocus, isFocusMode, gender, speed, region, setGender, setSpeed, setRegion }) => {
             const [status, setStatus] = useState("IDLE"); 
 			const [thinkingMode, setThinkingMode] = useState("low"); //default thinking mode
             const [messages, setMessages] = useState([]); 
@@ -879,7 +879,8 @@
             const [showConfig, setShowConfig] = useState(!localStorage.getItem('jpm_ai_url'));
             
             const recognitionRef = useRef(null);
-            
+
+           //Ends the session cleanly in AI mode when END button is hit 
             useEffect(() => {
                 const handleEndSignal = () => { stopEverything(); onEnd(0, []); };
                 window.addEventListener('jpm-trigger-end', handleEndSignal);
@@ -918,17 +919,26 @@
                 recognition.start();
             };
 
-            const speakResponse = (text) => {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                const voices = window.speechSynthesis.getVoices();
-                const gbVoice = voices.find(v => v.lang.includes('GB') || v.name.includes('UK'));
-                if (gbVoice) utterance.voice = gbVoice;
-                utterance.rate = 1.1; 
-                utterance.onstart = () => setStatus("SPEAKING");
-                utterance.onend = () => { setTimeout(() => { startListening(); }, 500); };
-                window.speechSynthesis.speak(utterance);
-            };
+			//AWS Polly Bridge
+			const speakResponse = async (text) => {
+			    const aiUrl = localStorage.getItem('jpm_ai_url');
+			    if (!aiUrl) return;
+			    try {
+			        const response = await fetch(aiUrl, {
+			            method: 'POST',
+			            headers: { 'Content-Type': 'application/json' },
+			            body: JSON.stringify({ 
+			                data: { action: "getSpeech", text, gender, speed, region, userID: "satnam_default" } 
+			            })
+			        });
+			        const blob = await response.blob();
+			        const audioUrl = URL.createObjectURL(blob);
+			        const audio = new Audio(audioUrl);
+			        audio.onplay = () => setStatus("SPEAKING");
+			        audio.onended = () => { setStatus("IDLE"); setTimeout(() => startListening(), 400); };
+			        audio.play();
+			    } catch (e) { console.error("Speech Error:", e); setStatus("IDLE"); }
+			};
 
 			            /* --- AI CONVERSATION HISTORY UPDATE SATNAM --- */
 			const sendMessage = async (text) => {
@@ -994,36 +1004,15 @@
 						</div>
 			            
 			            {/* THE DYNAMIC ORB */}
-			            <div className={`relative w-48 h-48 md:w-56 md:h-56 rounded-full flex items-center justify-center transition-all duration-700
-			                ${status === 'LISTENING' ? 'animate-[orb-pulse_2s_infinite] border-4 border-blue-500 shadow-[0_0_50px_rgba(59,130,246,0.4)]' : ''}
-			                ${status === 'THINKING' ? 'animate-[orb-think_3s_infinite] border-4 border-purple-500' : ''}
-			                ${status === 'SPEAKING' ? 'animate-[orb-speak_1s_infinite] border-4 border-jpm-accent shadow-[0_0_40px_rgba(197,157,95,0.3)]' : ''}
-			                ${status === 'IDLE' ? 'border-2 border-slate-700 opacity-60' : ''}
-			            `}>
 
-							<div className="w-full h-full rounded-full bg-gradient-to-br from-slate-900 to-black flex items-center justify-center">
-							    {/* IDLE: Technical AI Atom Emoji with Gold Glow */}
-							    {status === 'IDLE' && (
-							        <div className="text-7xl animate-[ai-glow-idle_3s_infinite] select-none">⚛️</div>
-							    )}
-							    
-							    {/* LISTENING: Pulse Ear */}
-							    {status === 'LISTENING' && (
-							        <div className="text-6xl animate-pulse select-none">🎙️</div>
-							    )}
-							    
-							    {/* THINKING: Processing Brain */}
-							    {status === 'THINKING' && (
-							        <div className="text-7xl animate-[brain-glow_1.5s_infinite] select-none">🧠</div>
-							    )}
-							    
-							    {/* SPEAKING: Animated Robot */}
-							    {status === 'SPEAKING' && (
-							        <div className="text-6xl animate-bounce select-none">🤖</div>
-							    )}
-							</div>
-							
-			            </div>
+						<div className={`relative w-48 h-48 rounded-full flex items-center justify-center transition-all duration-700 ${
+    						status === 'LISTENING' ? 'bg-blue-500/20 shadow-[0_0_50px_rgba(59,130,246,0.4)]' : 
+    						status === 'SPEAKING' ? 'bg-jpm-accent/20 shadow-[0_0_50px_rgba(197,157,95,0.4)]' : 'bg-slate-800/40'}`}>
+    						<div className={`w-36 h-36 rounded-full border-2 border-white/10 flex items-center justify-center overflow-hidden bg-slate-950 ${status === 'LISTENING' ? 'animate-pulse' : ''}`}>
+        						<div className="text-6xl filter drop-shadow-lg rounded-full select-none flex items-center justify-center">
+            					{status === 'SPEAKING' ? '🤖' : status === 'LISTENING' ? '🎙️' : status === 'THINKING' ? '🧠' : '⚛️'}
+        					</div>
+    					</div
 			
 			            <div className="mt-12 flex flex-col gap-4 w-full px-4">
 			                {status === 'IDLE' ? (
@@ -1038,60 +1027,33 @@
 			                </button>
 			            </div>
 
-						{/* CONTEXT: UI toggles for user to dynamically change the AI Interviewer's voice accent and gender */}
-						<div className="w-full px-4 mt-6 space-y-3 bg-slate-800/40 p-4 rounded-2xl border border-slate-700 shadow-inner">
-						    <span className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest block mb-2 text-left">Panel Persona</span>
-						    
-						    <div className="flex gap-2">
-						        <button 
-						            onClick={() => { SpeechManager.voiceConfig.lang = 'en-GB'; setMessages([...messages]); }}
-						            className={`flex-1 text-[10px] py-2 rounded-lg font-mono border transition-all ${SpeechManager.voiceConfig.lang === 'en-GB' ? 'bg-jpm-accent text-black border-jpm-accent shadow-lg' : 'bg-slate-700 text-gray-400 border-slate-600 opacity-60'}`}
-						        >UK ACCENT</button>
-						        <button 
-						            onClick={() => { SpeechManager.voiceConfig.lang = 'en-US'; setMessages([...messages]); }}
-						            className={`flex-1 text-[10px] py-2 rounded-lg font-mono border transition-all ${SpeechManager.voiceConfig.lang === 'en-US' ? 'bg-jpm-accent text-black border-jpm-accent shadow-lg' : 'bg-slate-700 text-gray-400 border-slate-600 opacity-60'}`}
-						        >US ACCENT</button>
+						{/* LEFT PANEL: VOICE SETTINGS */}
+
+						<div className="bg-slate-800/40 p-5 rounded-3xl border border-slate-700 shadow-inner w-full space-y-5">
+						    <div className="space-y-2">
+						        <label className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest block text-left">Panel Region</label>
+						        <div className="flex gap-2">
+						            <button onClick={() => setRegion('en-GB')} className={`flex-1 text-[10px] py-2 rounded-lg font-mono border transition-all ${region === 'en-GB' ? 'bg-jpm-accent text-black border-jpm-accent shadow-lg' : 'bg-slate-700 text-gray-400 border-slate-600 opacity-60'}`}>UK ACCENT</button>
+						            <button onClick={() => setRegion('en-US')} className={`flex-1 text-[10px] py-2 rounded-lg font-mono border transition-all ${region === 'en-US' ? 'bg-jpm-accent text-black border-jpm-accent shadow-lg' : 'bg-slate-700 text-gray-400 border-slate-600 opacity-60'}`}>US ACCENT</button>
+						        </div>
 						    </div>
-						
-						    <div className="flex gap-2">
-						        <button 
-						            onClick={() => { SpeechManager.voiceConfig.gender = 'male'; setMessages([...messages]); }}
-						            className={`flex-1 text-[10px] py-2 rounded-lg font-mono border transition-all ${SpeechManager.voiceConfig.gender === 'male' ? 'bg-blue-600 text-white border-blue-500 shadow-lg' : 'bg-slate-700 text-gray-400 border-slate-600 opacity-60'}`}
-						        ><i className="fas fa-mars mr-1"></i> MALE</button>
-						        <button 
-						            onClick={() => { SpeechManager.voiceConfig.gender = 'female'; setMessages([...messages]); }}
-						            className={`flex-1 text-[10px] py-2 rounded-lg font-mono border transition-all ${SpeechManager.voiceConfig.gender === 'female' ? 'bg-pink-600 text-white border-pink-500 shadow-lg' : 'bg-slate-700 text-gray-400 border-slate-600 opacity-60'}`}
-						        ><i className="fas fa-venus mr-1"></i> FEMALE</button>
+						    <div className="flex justify-between items-center pt-2">
+						        <label className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest">Panel Voice</label>
+						        <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+						            <button onClick={() => setGender('male')} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${gender === 'male' ? 'bg-jpm-accent text-black shadow-md' : 'text-gray-500'}`}>MALE</button>
+						            <button onClick={() => setGender('female')} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${gender === 'female' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-500'}`}>FEMALE</button>
+						        </div>
+						    </div>
+						    <div className="space-y-1 pt-2">
+						        <div className="flex justify-between items-center text-[10px] font-mono text-gray-500">
+						            <span className="uppercase tracking-widest">Reading Speed</span>
+						            <span className="text-jpm-accent font-bold">{speed}x</span>
+						        </div>
+						        <input type="range" min="0.5" max="1.5" step="0.1" value={speed} onChange={(e) => setSpeed(parseFloat(e.target.value))} className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-jpm-accent" />
 						    </div>
 						</div>
 
-						{/* CONTEXT: Precision sliders for Pitch and Speed to customize the AI's vocal delivery */}
-						<div className="w-full px-4 mt-4 space-y-4 bg-slate-800/40 p-4 rounded-2xl border border-slate-700 shadow-inner">
-						    <div className="flex flex-col gap-1">
-						        <div className="flex justify-between items-center">
-						            <span className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest">Voice Speed</span>
-						            <span className="text-[10px] font-mono text-jpm-accent">{SpeechManager.voiceConfig.rate}x</span>
-						        </div>
-						        <input type="range" min="0.5" max="1.5" step="0.1" 
-						            value={SpeechManager.voiceConfig.rate} 
-						            onChange={(e) => { SpeechManager.voiceConfig.rate = parseFloat(e.target.value); setMessages([...messages]); }}
-						            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-jpm-accent" 
-						        />
-						    </div>
-						
-						    <div className="flex flex-col gap-1">
-						        <div className="flex justify-between items-center">
-						            <span className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest">Voice Pitch</span>
-						            <span className="text-[10px] font-mono text-jpm-accent">{SpeechManager.voiceConfig.pitch}</span>
-						        </div>
-						        <input type="range" min="0.5" max="1.5" step="0.1" 
-						            value={SpeechManager.voiceConfig.pitch} 
-						            onChange={(e) => { SpeechManager.voiceConfig.pitch = parseFloat(e.target.value); setMessages([...messages]); }}
-						            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-jpm-accent" 
-						        />
-						    </div>
-						</div>
-			
+						{/* LEFT PANEL: SYNC AI MODEL URL SYNC POPUP */}
 			            {showConfig && (
 			                <div className="absolute bottom-10 left-6 right-6 z-50 bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-2xl animate-slide-in">
 			                    <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Function URL" className="bg-black/50 border border-slate-600 rounded p-2 text-white w-full text-[10px] font-mono mb-2" />
@@ -1117,7 +1079,7 @@
 						
 			        </div>
 			
-			        {/* RIGHT PANEL: The Persistent Transcript (The "History") */}
+			        {/* RIGHT PANEL: The Persistent Transcript (The "History") with Users Name and Timestamp */}
 			        <div className="w-2/3 flex flex-col p-8 overflow-y-auto scroll-touch relative bg-black/20">
 			            <div className="space-y-6 pb-20">
 			                {messages.length === 0 && (
@@ -1126,20 +1088,22 @@
 			                        <p className="font-quote italic text-xl">The panel is ready for your introduction...</p>
 			                    </div>
 			                )}
-			                {messages.map((msg, i) => (
-			                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in`}>
-			                        <div className={`max-w-[85%] p-5 rounded-2xl leading-relaxed text-base border shadow-xl ${
-			                            msg.role === 'user' 
-			                            ? 'bg-slate-800 border-slate-700 text-gray-200' 
-			                            : 'bg-slate-900 border-jpm-accent/20 text-white'
-			                        }`}>
-			                            <span className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50 font-mono">
-			                                {msg.role === 'user' ? 'Satnam Singh' : 'J.P. Morgan Panel'}
-			                            </span>
-			                            {msg.text}
-			                        </div>
-			                    </div>
-			                ))}
+							
+							{/* Chat User name and Timestamp in Chat History */}
+							{messages.map((msg, i) => (
+							    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in`}>
+							        <div className={`max-w-[85%] p-5 rounded-2xl leading-relaxed text-base border shadow-xl ${msg.role === 'user' ? 'bg-slate-800 border-slate-700 text-gray-200' : 'bg-slate-900 border-jpm-accent/20 text-white'}`}>
+							            <div className="flex justify-between items-center mb-2 gap-4">
+							                <span className="text-[10px] font-bold uppercase tracking-widest opacity-50 font-mono">
+							                    {msg.role === 'user' ? 'Satnam Singh' : 'J.P. Morgan Panel'}
+							                </span>
+							                <span className="text-[9px] font-mono opacity-30">{new Date().toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit'})}</span>
+							            </div>
+							            {msg.text}
+							        </div>
+							    </div>
+							))}
+							
 			                {status === 'THINKING' && (
 			                    <div className="flex justify-start animate-pulse">
 			                        <div className="bg-slate-900 p-4 rounded-xl text-jpm-accent font-mono text-xs border border-jpm-accent/10">
@@ -1182,6 +1146,9 @@
             });
             const [showProjectCreator, setShowProjectCreator] = useState(false);
             const [syncStatus, setSyncStatus] = useState('synced');
+			const [gender, setGender] = useState('male'); 
+			const [region, setRegion] = useState('en-GB');
+			const [speed, setSpeed] = useState(1.0);
 
             const quote = useMemo(() => {
                 const quotes = [
@@ -1441,32 +1408,23 @@
             };
 
 			const restartSession = (m, deckName) => { 
-                // --- FIX: Prevent crash in AI Mode ---
-                if (m === 'ai_interview') {
-                    setSessionKey(prev => prev + 1); // Just reset the component
-                    return;
-                }
-                // -------------------------------------
-
-                const map = { 'flashcard': 'flashcards', 'type': 'type', 'mcq': 'mcq', 'study': 'study', 'skill': 'skills', 'vocab': 'vocab' }; 
-                
-                // Safety check to prevent "undefined" crash
-                if (!map[m] || !data[map[m]]) return;
-
-                let fullDeck = data[map[m]].filter(d => d.Deck === deckName); 
-                
-                if(fullDeck.length === 0) return; 
-                
-                if (m === 'vocab') fullDeck = fullDeck.map(item => ({...item, Question: item.Word, Answer: item.Meaning, ModeTitle: 'Vocabulary'})); 
-                
-                saveProgress(m, deckName, 'In Progress', 0, null); 
-                setActiveDeck({ name: deckName, items: fullDeck }); 
-                setMode(m); 
-                setStats({ correct: 0, completed: 0, total: fullDeck.length }); 
-                setModalDeck(null); 
-                setSessionKey(prev => prev + 1); 
-                setFocusMode(false); 
-            };
+			    if (m === 'ai_interview') {
+			        setSessionKey(prev => prev + 1); // Safely refreshes the AI session
+			        return;
+			    }
+			    const map = { 'flashcard': 'flashcards', 'type': 'type', 'mcq': 'mcq', 'study': 'study', 'skill': 'skills', 'vocab': 'vocab' }; 
+			    if (!map[m] || !data[map[m]]) return;
+			    let fullDeck = data[map[m]].filter(d => d.Deck === deckName); 
+			    if(fullDeck.length === 0) return; 
+			    if (m === 'vocab') fullDeck = fullDeck.map(item => ({...item, Question: item.Word, Answer: item.Meaning, ModeTitle: 'Vocabulary'})); 
+			    saveProgress(m, deckName, 'In Progress', 0, null); 
+			    setActiveDeck({ name: deckName, items: fullDeck }); 
+			    setMode(m); 
+			    setStats({ correct: 0, completed: 0, total: fullDeck.length }); 
+			    setModalDeck(null); 
+			    setSessionKey(prev => prev + 1); 
+			    setFocusMode(false); 
+			};
 			
             const handleHeaderEnd = () => { window.dispatchEvent(new CustomEvent('jpm-trigger-end')); };
             const endSession = useCallback((finalScore = 0, remainingItems = []) => { let status = 'In Progress'; let queueToSave = null; if (mode === 'flashcard' || mode === 'vocab') { if (finalScore === 100 && remainingItems.length === 0) status = 'Completed'; else { status = 'In Progress'; queueToSave = remainingItems; } } else { status = finalScore >= 50 && remainingItems.length === 0 ? 'Completed' : 'In Progress'; if (status === 'In Progress') queueToSave = remainingItems; } saveProgress(mode, activeDeck.name, status, finalScore, queueToSave); setMode('menu'); setActiveDeck(null); setFocusMode(false); }, [mode, activeDeck, progress]);
@@ -1550,7 +1508,7 @@
                         <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.85 | Premium Edition</span></div>
+                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.86 | Premium Edition</span></div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
@@ -1629,6 +1587,7 @@
     </script>
 </body>
 </html>
+
 
 
 
