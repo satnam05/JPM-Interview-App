@@ -1021,12 +1021,81 @@
         const fullTranscriptRef = useRef("");
         const currentAudioRef = useRef(null);
         const [isPaused, setIsPaused] = useState(false);
-        const isBotSpeakingRef = useRef(false); // CRITICAL: Mute Lock
 
-        // ARCHITECT FIX: Unified Stop Logic
+        /*Real-time Voice Adoption. 
+            When Satnam changes Speed, Gender, or Region, the current audio stops 
+            and restarts immediately with the new settings using the same text. */
+        useEffect(() => {
+            if (status === "SPEAKING" && currentAudioRef.current) {
+                // Stop current audio
+                currentAudioRef.current.pause();
+                currentAudioRef.current.src = "";
+
+                // Restart with same text but new settings
+                if (lastSpokenTextRef.current) {
+                    speakResponse(lastSpokenTextRef.current);
+                }
+            }
+        }, [gender, speed, region]); // Watch for any setting change
+
+        //Ends the session cleanly in AI mode when END button is hit 
+        useEffect(() => {
+            const handleEndSignal = () => { stopEverything(); onEnd(0, []); };
+            window.addEventListener('jpm-trigger-end', handleEndSignal);
+            return () => window.removeEventListener('jpm-trigger-end', handleEndSignal);
+        }, [onEnd]);
+
+        /* CONTEXT: Strategic History Fetch. Pulls previous JPM interview 
+            transcripts from the cloud to ensure session continuity when returning to AI Mode. */
+        useEffect(() => {
+            const fetchCloudHistory = async () => {
+                const aiUrl = localStorage.getItem('jpm_ai_url');
+                if (!aiUrl) return;
+                try {
+                    const res = await fetch(aiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            data: {
+                                action: "fetchHistory",
+                                userID: "satnam_default",
+                                sessionID: "voice-session-satnam"
+                            }
+                        })
+                    });
+                    const result = await res.json();
+
+                    /* Strategic History Fix. Ensures both Satnam's words 
+                        and the AI's responses are mapped to the 'text' property 
+                        so they both appear in the transcript window. */
+
+                    if (result.data?.history) {
+                        const historicalMessages = [];
+                        result.data.history.forEach(h => {
+                            // 1. Add User message first (if it exists in that log entry)
+                            if (h.userSaid) {
+                                historicalMessages.push({ role: 'user', text: h.userSaid });
+                            }
+                            // 2. Add AI message second
+                            if (h.aiSaid) {
+                                historicalMessages.push({ role: 'model', text: h.aiSaid });
+                            }
+                        });
+                        setMessages(historicalMessages);
+                    }
+
+                } catch (e) { console.error("History fetch failed:", e); }
+            };
+            fetchCloudHistory();
+        }, []);
+
+        /* ARCHITECT FIX: isBotSpeakingRef prevents the AI from 'hearing' its own 
+           voice and creating a loop. It acts as a system-wide Mute Lock. */
+        const isBotSpeakingRef = useRef(false);
+
         const stopEverything = useCallback(() => {
             if (recognitionRef.current) {
-                recognitionRef.current.onend = null; // Prevent auto-restart
+                recognitionRef.current.onend = null;
                 recognitionRef.current.stop();
             }
             if (currentAudioRef.current) {
@@ -1039,7 +1108,6 @@
             setInterimText("");
         }, []);
 
-        // ARCHITECT FIX: Proper Audio Control
         const togglePause = () => {
             if (!currentAudioRef.current) return;
             if (isPaused) {
@@ -1053,9 +1121,8 @@
             }
         };
 
-        // ARCHITECT FIX: Reliable startListening
         const startListening = useCallback(() => {
-            // Prevent mic if bot is already talking
+            // Mute Lock: Do not start mic if bot is talking
             if (isBotSpeakingRef.current) return;
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1075,7 +1142,8 @@
             };
 
             recognition.onresult = (e) => {
-                if (isBotSpeakingRef.current) return; // Ignore result if bot started talking
+                // Safety: Discard mic input if bot somehow started speaking
+                if (isBotSpeakingRef.current) return;
                 if (silencerTimeout) clearTimeout(silencerTimeout);
 
                 let interim = "";
@@ -1109,7 +1177,7 @@
         }, [region, status]);
 
         const speakResponse = async (text) => {
-            isBotSpeakingRef.current = true; // LOCK ON
+            isBotSpeakingRef.current = true; // LOCK ENGAGED
             if (recognitionRef.current) recognitionRef.current.stop();
 
             try {
@@ -1120,18 +1188,15 @@
                 });
 
                 const blob = await response.blob();
-                if (blob.size < 500) throw new Error("Audio too small");
-
                 const audio = new Audio(URL.createObjectURL(blob));
                 currentAudioRef.current = audio;
 
                 audio.onplay = () => setStatus("SPEAKING");
                 audio.onended = () => {
-                    isBotSpeakingRef.current = false; // LOCK OFF
+                    isBotSpeakingRef.current = false; // LOCK RELEASED
                     setStatus("IDLE");
-                    startListening(); // Safe to hear Satnam now
+                    startListening();
                 };
-
                 await audio.play();
             } catch (e) {
                 isBotSpeakingRef.current = false;
@@ -1168,18 +1233,17 @@
 
         return (
             <div className="flex h-full w-full bg-slate-950 text-white overflow-hidden">
-                {/* LEFT PANEL: Squeezed for iPad */}
-                <div className="w-1/3 border-r border-slate-800 flex flex-col items-center justify-start p-3 pt-10 bg-slate-900/50 relative">
+                {/* LEFT PANEL: ARCHITECT SQUEEZE - Shifts content to prevent top/bottom clipping */}
+                <div className="w-1/3 border-r border-slate-800 flex flex-col items-center justify-start p-3 pt-8 bg-slate-900/50 relative">
 
-                    {/* Status Indicator */}
-                    <div className="px-2 py-0.5 rounded-full border text-[10px] font-bold font-mono mb-6 transition-all border-slate-700 bg-slate-800 text-slate-400">
+                    {/* Fixed Label: py-0.5 and text-10px for minimal footprint */}
+                    <div className={`px-2 py-0.5 rounded-full border text-[10px] font-bold font-mono mb-4 transition-all border-slate-700 bg-slate-800 text-slate-400`}>
                         {status}
                     </div>
 
-                    {/* AI ORB: Responsive Sizing */}
-                    <div className={`relative w-40 h-40 rounded-full flex items-center justify-center transition-all duration-700 shadow-2xl ${status === 'LISTENING' ? 'bg-blue-500/20 shadow-[0_0_50px_rgba(59,130,246,0.5)] animate-[orb-wobble_3s_infinite]' :
-                            status === 'SPEAKING' ? 'bg-jpm-accent/30 shadow-[0_0_50px_rgba(197,157,95,0.5)] animate-[orb-wobble_1.5s_infinite]' :
-                                'bg-slate-800/40'
+                    {/* Squeezed AI Orb: w-40 for safer iPad height fit */}
+                    <div className={`relative w-40 h-40 rounded-full flex items-center justify-center transition-all duration-700 shadow-2xl ${status === 'LISTENING' ? 'bg-blue-500/20 shadow-[0_0_50px_rgba(59,130,246,0.5)]' :
+                            status === 'SPEAKING' ? 'bg-jpm-accent/30 shadow-[0_0_50px_rgba(197,157,95,0.5)]' : 'bg-slate-800/40'
                         }`}>
                         <div className="w-32 h-32 rounded-full border-2 border-white/10 flex items-center justify-center overflow-hidden bg-slate-950">
                             <div className="text-5xl select-none">
@@ -1188,13 +1252,13 @@
                         </div>
                     </div>
 
-                    {/* CONTROLS: Consistency Fix */}
-                    <div className="mt-10 flex flex-col gap-3 w-full px-2">
+                    {/* Unified Control Block */}
+                    <div className="mt-8 flex flex-col gap-3 w-full px-2">
                         {status === 'IDLE' ? (
-                            <button onClick={startListening} className="w-full bg-jpm-accent text-black font-bold py-4 rounded-xl cursor-pointer hover:scale-[1.02] active:scale-95 transition-all">START SESSION</button>
+                            <button onClick={startListening} className="w-full bg-jpm-accent text-black font-bold py-3 rounded-xl cursor-pointer hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-tighter">START SESSION</button>
                         ) : (
                             <>
-                                <button onClick={togglePause} className={`w-full border py-3 rounded-xl font-mono text-[10px] uppercase tracking-widest cursor-pointer transition-all ${isPaused ? 'bg-amber-600/20 border-amber-500 text-white animate-pulse' : 'border-amber-900/50 text-amber-500'}`}>
+                                <button onClick={togglePause} className={`w-full border py-3 rounded-xl font-mono text-[10px] uppercase tracking-widest cursor-pointer transition-all ${isPaused ? 'bg-amber-600 border-amber-500 text-white animate-pulse' : 'border-amber-900/50 text-amber-500'}`}>
                                     <i className={`fas ${isPaused ? 'fa-play' : 'fa-pause'} mr-2 pointer-events-none`}></i>
                                     <span className="pointer-events-none">{isPaused ? 'Resume Session' : 'Pause Session'}</span>
                                 </button>
@@ -1205,22 +1269,24 @@
                         )}
                     </div>
 
-                    {/* Logic Toggle */}
-                    <div className="mt-auto mb-10 w-full px-2">
-                        <div className="flex items-center justify-between bg-slate-800/40 p-4 rounded-2xl border border-slate-700 shadow-inner">
-                            <div className="flex flex-col"><span className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest">Logic Depth</span>
-                                <span className={`text-[11px] font-bold font-mono ${thinkingMode === 'high' ? 'text-purple-400' : 'text-jpm-accent'}`}>{thinkingMode === 'high' ? 'VP PANEL' : 'DRILL'}</span></div>
-                            <button onClick={() => setThinkingMode(p => p === 'high' ? 'low' : 'high')} className={`w-12 h-6 rounded-full relative transition-all ${thinkingMode === 'high' ? 'bg-purple-600' : 'bg-slate-600'}`}>
-                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${thinkingMode === 'high' ? 'translate-x-7' : 'translate-x-1'}`}></div>
+                    {/* Voice & Logic Settings Panel */}
+                    <div className="mt-auto mb-6 w-full space-y-4 px-2">
+                        <div className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700 shadow-inner">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest">Logic Depth</span>
+                                <span className={`text-[10px] font-bold font-mono ${thinkingMode === 'high' ? 'text-purple-400' : 'text-jpm-accent'}`}>{thinkingMode === 'high' ? 'VP PANEL' : 'DRILL'}</span>
+                            </div>
+                            <button onClick={() => setThinkingMode(p => p === 'high' ? 'low' : 'high')} className={`w-full h-1.5 rounded-full relative ${thinkingMode === 'high' ? 'bg-purple-600' : 'bg-slate-600'}`}>
+                                <div className={`absolute top-[-4px] w-4 h-4 bg-white rounded-full transition-transform ${thinkingMode === 'high' ? 'right-0' : 'left-0 shadow-lg'}`}></div>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* RIGHT PANEL: History */}
+                {/* RIGHT PANEL: Transcription & History */}
                 <div className="w-2/3 flex flex-col p-8 overflow-y-auto relative bg-black/20">
                     <div className="space-y-6 pb-20">
-                        {messages.length === 0 && <div className="h-64 flex flex-col items-center justify-center text-slate-700 italic font-quote text-xl">The panel is ready...</div>}
+                        {messages.length === 0 && <div className="h-64 flex flex-col items-center justify-center text-slate-700 italic font-quote text-xl">The panel is ready for your introduction...</div>}
                         {status === 'LISTENING' && interimText && (
                             <div className="flex justify-end animate-pulse">
                                 <div className="max-w-[85%] p-5 rounded-2xl border border-blue-500 bg-blue-900/20 text-blue-100 shadow-lg">
@@ -1240,7 +1306,7 @@
                                 </div>
                             </div>
                         ))}
-                        {status === 'THINKING' && <div className="flex justify-start animate-pulse"><div className="bg-slate-900 p-4 rounded-xl text-jpm-accent font-mono text-xs border border-jpm-accent/10">Analyzing...</div></div>}
+                        {status === 'THINKING' && <div className="flex justify-start animate-pulse"><div className="bg-slate-900 p-4 rounded-xl text-jpm-accent font-mono text-xs border border-jpm-accent/10">Analyzing technical response...</div></div>}
                     </div>
                 </div>
             </div>
