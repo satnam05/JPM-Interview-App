@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.87</title>
+    <title>JP Morgan Interview Preparation App v20.88</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -986,6 +986,7 @@
 			return (
 			    <div className="flex h-full w-full bg-slate-950 text-white overflow-hidden">
 			        {/* LEFT PANEL: The Animated AI Orb (The "Brain") */}
+
 			        <div className="w-1/3 border-r border-slate-800 flex flex-col items-center justify-center p-6 bg-slate-900/50 relative">
 
 						{/* CONTEXT: Re-positioning Status Text from Absolute to Relative to prevent Orb overlap */}
@@ -1509,7 +1510,7 @@
                         <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.87 | Premium Edition</span></div>
+                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.88 | Premium Edition</span></div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
@@ -1575,7 +1576,7 @@
                             {(mode === 'flashcard' || mode === 'vocab') && activeDeck && ( <ComponentSandbox> <FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
                             {(mode === 'type') && activeDeck && ( <ComponentSandbox> <TypeMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
                             {(mode === 'mcq') && activeDeck && ( <ComponentSandbox> <MCQMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
-							{(mode === 'ai_interview') && ( <ComponentSandbox> <AIMode key={sessionKey} onEnd={endSession} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox> )}
+							{(mode === 'ai_interview') && ( <ComponentSandbox> <AIMode key={sessionKey} onEnd={endSession} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} gender={gender} speed={speed} region={region} setGender={setGender} setSpeed={setSpeed} setRegion={setRegion} /> </ComponentSandbox> )}
                         </main>
                         {!focusMode && <MobileNavBar currentMode={mode} setMode={setMode} onPrompt={() => setShowPrompts(true)} onSettings={() => setShowSettings(true)} />}
                     </div>
