@@ -7,6 +7,10 @@ This application provides a comprehensive suite of tools ranging from technical 
 
 ---
 
+## IMPORTANT LINKS & AWS ACCOUNT ID:
+
+
+
 ## 🚀 Key Features
 
 ### 1. 🧠 Immersive Learning Modes
