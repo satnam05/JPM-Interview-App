@@ -1058,7 +1058,7 @@
                 recognition.start();
             };
 
-            /* CONTEXT: Robust AWS Polly Bridge. Fixed the missing 'region' parameter 
+            /* Robust AWS Polly Bridge. Fixed the missing 'region' parameter 
             and added error handling to prevent the 'Stuck in Speaking' bug. */
             const speakResponse = async (text) => {
                 const aiUrl = localStorage.getItem('jpm_ai_url');
@@ -1068,11 +1068,12 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
+                            // FIXED: Added 'region' to the payload
                             data: { action: "getSpeech", text, gender, speed, region, userID: "satnam_default" }
                         })
                     });
 
-                    if (!response.ok) throw new Error("Audio Bridge Error");
+                    if (!response.ok) throw new Error("Audio Stream Error");
                     const blob = await response.blob();
                     if (blob.size < 100) throw new Error("Empty Audio Stream");
 
@@ -1085,7 +1086,7 @@
                         URL.revokeObjectURL(audioUrl);
                         setTimeout(() => startListening(), 400);
                     };
-                    audio.onerror = () => setStatus("IDLE"); // Reset if playback fails
+                    audio.onerror = () => setStatus("IDLE"); // Reset UI if playback fails
 
                     await audio.play();
                 } catch (e) {
