@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App V20.95</title>
+    <title>JP Morgan Interview Preparation App V20.96</title>
 
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -1063,36 +1063,41 @@
 
             const speakResponse = async (text) => {
                 const aiUrl = localStorage.getItem('jpm_ai_url');
-                if (!aiUrl) return;
+                console.log("DEBUG: Sending text to speech:", text.substring(0, 20) + "...");
                 try {
                     const response = await fetch(aiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            data: { action: "getSpeech", text, gender, speed, region, userID: "satnam_default" }
-                        })
+                        body: JSON.stringify({ data: { action: "getSpeech", text, gender, speed, region } })
                     });
 
-                    if (!response.ok) throw new Error("Network Response Fail");
+                    // DIAGNOSTIC LOGS
+                    console.log("DEBUG: Response Status:", response.status);
+                    console.log("DEBUG: Content-Type:", response.headers.get('Content-Type'));
+
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        console.error("DEBUG: Backend Error Body:", errText);
+                        throw new Error("Backend failed");
+                    }
+
                     const blob = await response.blob();
-                    if (blob.size < 100) throw new Error("Corrupted Audio Data");
+                    console.log("DEBUG: Audio Blob Size:", blob.size, "bytes");
+
+                    if (blob.size < 500) {
+                        console.error("DEBUG: Blob too small. Likely an error message masked as a blob.");
+                        setStatus("IDLE");
+                        return;
+                    }
 
                     const audioUrl = URL.createObjectURL(blob);
                     const audio = new Audio(audioUrl);
-
-                    const resetUI = () => {
-                        setStatus("IDLE");
-                        URL.revokeObjectURL(audioUrl);
-                        setTimeout(() => startListening(), 400);
-                    };
-
                     audio.onplay = () => setStatus("SPEAKING");
-                    audio.onended = resetUI;
-                    audio.onerror = resetUI; // CRITICAL: Reset if audio fails to load
-
+                    audio.onended = () => { setStatus("IDLE"); URL.revokeObjectURL(audioUrl); setTimeout(() => startListening(), 400); };
+                    audio.onerror = (e) => { console.error("DEBUG: Audio Playback Error:", e); setStatus("IDLE"); };
                     await audio.play();
                 } catch (e) {
-                    console.error("Speech Logic Error:", e);
+                    console.error("DEBUG: Catch Block Error:", e);
                     setStatus("IDLE");
                 }
             };
@@ -1697,7 +1702,7 @@
                             <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                                 <div className="flex items-center gap-3">
                                     <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                    <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">V20.95 | Premium Edition</span></div>
+                                    <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">V20.96 | Premium Edition</span></div>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
