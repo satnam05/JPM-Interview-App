@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App v20.90</title>
+    <title>JP Morgan Interview Preparation App v20.91</title>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -911,9 +911,8 @@
                 recognition.start();
             };
 
-            /* CRobust AWS Polly Bridge with Error Recovery. 
-            Prevents the 'Stuck in Speaking' bug by adding explicit error handling 
-            and a fallback reset to IDLE. */
+            /* CONTEXT: Robust AWS Polly Bridge. Fixed the missing 'region' parameter 
+            and added error handling to prevent the 'Stuck in Speaking' bug. */
             const speakResponse = async (text) => {
                 const aiUrl = localStorage.getItem('jpm_ai_url');
                 if (!aiUrl) return;
@@ -925,34 +924,26 @@
                             data: { action: "getSpeech", text, gender, speed, region, userID: "satnam_default" } 
                         })
                     });
-
-                    if (!response.ok) throw new Error("AWS Polly Bridge Failed");
-
+                    
+                    if (!response.ok) throw new Error("Audio Bridge Error");
                     const blob = await response.blob();
-                    if (blob.size < 100) throw new Error("Empty Audio Returned");
+                    if (blob.size < 100) throw new Error("Empty Audio Stream");
 
                     const audioUrl = URL.createObjectURL(blob);
                     const audio = new Audio(audioUrl);
-
-                    audio.onplay = () => setStatus("SPEAKING");
                     
-                    // Safety Reset: If audio ends or fails, go back to IDLE
-                    const resetToIdle = () => {
-                        setStatus("IDLE");
+                    audio.onplay = () => setStatus("SPEAKING");
+                    audio.onended = () => { 
+                        setStatus("IDLE"); 
                         URL.revokeObjectURL(audioUrl);
-                        setTimeout(() => startListening(), 400);
+                        setTimeout(() => startListening(), 400); 
                     };
-
-                    audio.onended = resetToIdle;
-                    audio.onerror = (e) => {
-                        console.error("Audio Playback Error:", e);
-                        resetToIdle();
-                    };
-
+                    audio.onerror = () => setStatus("IDLE"); // Reset if playback fails
+                    
                     await audio.play();
                 } catch (e) { 
-                    console.error("Speech Logic Error:", e); 
-                    setStatus("IDLE"); // Immediate recovery from stuck state
+                    console.error("Speech Error:", e); 
+                    setStatus("IDLE"); 
                 }
             };
 
@@ -1539,7 +1530,7 @@
                         <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.90 | Premium Edition</span></div>
+                                <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">v20.91 | Premium Edition</span></div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
