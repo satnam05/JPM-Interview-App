@@ -109,24 +109,25 @@
             These keyframes provide the organic, non-square movement for 
             Listening, Speaking, and the gold rotation for Idle. */
 
-        @keyframes orb-wobble {
-            0% { border-radius: 50%; transform: scale(1); }
-            33% { border-radius: 42% 58% 50% 50%; transform: scale(1.03); }
-            66% { border-radius: 50% 50% 58% 42%; transform: scale(0.97); }
-            100% { border-radius: 50%; transform: scale(1); }
-        }
+        /* --- PREMIUM AI ORB ANIMATIONS: FIXES SQUARE ROTATION --- */
+            @keyframes orb-wobble {
+                0% { border-radius: 50%; transform: scale(1); }
+                33% { border-radius: 42% 58% 50% 50%; transform: scale(1.05); }
+                66% { border-radius: 50% 50% 58% 42%; transform: scale(0.95); }
+                100% { border-radius: 50%; transform: scale(1); }
+            }
 
-        @keyframes ai-glow-idle {
-            0% { filter: drop-shadow(0 0 5px #C59D5F); transform: rotate(0deg) scale(1); }
-            50% { filter: drop-shadow(0 0 25px #C59D5F) brightness(1.3); transform: rotate(180deg) scale(1.05); }
-            100% { filter: drop-shadow(0 0 5px #C59D5F); transform: rotate(360deg) scale(1); }
-        }
+            @keyframes ai-glow-idle {
+                0% { filter: drop-shadow(0 0 5px #C59D5F); transform: rotate(0deg); }
+                50% { filter: drop-shadow(0 0 25px #C59D5F) brightness(1.3); transform: rotate(180deg); }
+                100% { filter: drop-shadow(0 0 5px #C59D5F); transform: rotate(360deg); }
+            }
 
-        @keyframes brain-think {
-            0% { filter: hue-rotate(0deg) brightness(1); transform: scale(1) rotate(0deg); }
-            50% { filter: hue-rotate(90deg) brightness(1.5); transform: scale(1.15) rotate(15deg); }
-            100% { filter: hue-rotate(0deg) brightness(1); transform: scale(1) rotate(0deg); }
-        }
+            @keyframes brain-think {
+                0% { filter: hue-rotate(0deg) brightness(1); transform: scale(1) rotate(0deg); }
+                50% { filter: hue-rotate(90deg) brightness(1.5); transform: scale(1.15) rotate(15deg); }
+                100% { filter: hue-rotate(0deg) brightness(1); transform: scale(1) rotate(0deg); }
+            }
 
         /* ---END -- PREMIUM AI ORB ANIMATIONS */
 		
@@ -992,7 +993,8 @@
                             </div>
                         </div>
 			            
-			            {/* START - THE DYNAMIC PREMIUM ORB - ALL STATES ENHANCED */}
+			            {/* START - THE DYNAMIC PREMIUM AI ORB - ALL STATES ENHANCED */}
+                        
                         <div className={`relative w-48 h-48 rounded-full flex items-center justify-center transition-all duration-700 shadow-2xl ${
                             status === 'LISTENING' ? 'bg-blue-500/20 shadow-[0_0_60px_rgba(59,130,246,0.6)] animate-[orb-wobble_3s_infinite]' : 
                             status === 'SPEAKING' ? 'bg-jpm-accent/30 shadow-[0_0_60px_rgba(197,157,95,0.6)] animate-[orb-wobble_1.5s_infinite]' : 
@@ -1000,10 +1002,13 @@
                             'bg-slate-800/40 shadow-inner'}`}>
                             
                             <div className={`w-36 h-36 rounded-full border-2 border-white/10 flex items-center justify-center overflow-hidden bg-slate-950 ${status === 'LISTENING' ? 'animate-pulse' : ''}`}>
-                                <div className={`text-6xl rounded-full select-none flex items-center justify-center w-full h-full transition-all duration-500 ${
-                                    status === 'IDLE' ? 'animate-[ai-glow-idle_6s_linear_infinite]' : 
-                                    status === 'THINKING' ? 'animate-[brain-think_2s_infinite]' : 'filter drop-shadow-lg'}`}>
-                                    {status === 'SPEAKING' ? '🤖' : status === 'LISTENING' ? '🎙️' : status === 'THINKING' ? '🧠' : '⚛️'}
+                                {/* FIX: Nested container with overflow-hidden prevents square rotation edges */}
+                                <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center relative">
+                                    <div className={`text-6xl select-none flex items-center justify-center w-full h-full transition-all duration-500 ${
+                                        status === 'IDLE' ? 'animate-[ai-glow-idle_10s_linear_infinite]' : 
+                                        status === 'THINKING' ? 'animate-[brain-think_2s_infinite]' : 'filter drop-shadow-lg'}`}>
+                                        {status === 'SPEAKING' ? '🤖' : status === 'LISTENING' ? '🎙️' : status === 'THINKING' ? '🧠' : '⚛️'}
+                                    </div>
                                 </div>
                             </div>
                             
@@ -1012,7 +1017,7 @@
                             {status === 'LISTENING' && <div className="absolute inset-0 rounded-full border-2 border-blue-400/30 animate-pulse"></div>}
                         </div>
 
-                        {/* END - THE DYNAMIC PREMIUM ORB */}
+                        {/* END - THE DYNAMIC PREMIUM AI ORB */}
 			
 			            <div className="mt-12 flex flex-col gap-4 w-full px-4">
 			                {status === 'IDLE' ? (
