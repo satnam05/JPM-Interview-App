@@ -1508,6 +1508,8 @@
             const [streak, setStreak] = useState(0);
             const [pressureMode, setPressureMode] = useState(false);
             const [focusMode, setFocusMode] = useState(false);
+            // DEFAULT: Cram Mode (12h, 24h, 36h, 48h)
+            const [leitnerConfig, setLeitnerConfig] = useState({ l1: 0.5, l2: 1.0, l3: 1.5, l4: 2.0 });
 
             /* Initializing the Global Sync Engine states. 
                 'customProjects' will store your future Innovation Lab projects. */
@@ -1533,7 +1535,13 @@
                         try {
                             const parsedLocal = JSON.parse(savedLocal);
                             setProgress(parsedLocal);
-                            if (parsedLocal._settings) setPressureMode(parsedLocal._settings.pressureMode || false);
+                            // RESTORE SETTINGS
+                            if (parsedLocal._settings) {
+                                setPressureMode(parsedLocal._settings.pressureMode || false);
+                                if (parsedLocal._settings.leitnerConfig) {
+                                    setLeitnerConfig(parsedLocal._settings.leitnerConfig);
+                                }
+                            }
                         } catch (e) { console.error("Local load error", e); }
                     }
 
@@ -1797,7 +1805,12 @@
                                 if (cloudP) setProgress(cloudP);
                                 if (cloudCP) setCustomProjects(cloudCP);
                                 // After cloud merge, check settings
-                                if (cloudP?._settings) setPressureMode(cloudP._settings.pressureMode || false);
+                                if (cloudP?._settings) {
+                                    setPressureMode(cloudP._settings.pressureMode || false);
+                                    if (cloudP._settings.leitnerConfig) {
+                                        setLeitnerConfig(cloudP._settings.leitnerConfig);
+                                    }
+                                };
                                 return;
                             }
                         } catch (e) { console.warn("Cloud fetch failed, using local."); }
@@ -1893,24 +1906,40 @@
 
             const handleHeaderEnd = () => { window.dispatchEvent(new CustomEvent('jpm-trigger-end')); };
             const endSession = useCallback((finalScore = 0, remainingItems = []) => { let status = 'In Progress'; let queueToSave = null; if (mode === 'flashcard' || mode === 'vocab') { if (finalScore === 100 && remainingItems.length === 0) status = 'Completed'; else { status = 'In Progress'; queueToSave = remainingItems; } } else { status = finalScore >= 50 && remainingItems.length === 0 ? 'Completed' : 'In Progress'; if (status === 'In Progress') queueToSave = remainingItems; } saveProgress(mode, activeDeck.name, status, finalScore, queueToSave); setMode('menu'); setActiveDeck(null); setFocusMode(false); }, [mode, activeDeck, progress]);
+            // Leitner System Implementation
             const saveProgress = (m, d, status, score, queue = null) => {
-                // LEITNER LOGIC: Update nextReview based on score
                 let nextReview = null;
-                let leitnerLevel = progress[`${m}-${d}`]?.leitnerLevel || 1;
+                let leitnerLevel = progress[`${m}-${d}`]?.leitnerLevel || 0;
 
                 if (status === 'Completed') {
                     if (score >= 80) {
-                        leitnerLevel = Math.min(leitnerLevel + 1, 3);
-                        const days = leitnerLevel === 1 ? 1 : leitnerLevel === 2 ? 3 : 7;
+                        leitnerLevel = Math.min(leitnerLevel + 1, 4);
+                        
+                        // DYNAMIC CONFIGURATION
+                        const days = leitnerLevel === 1 ? leitnerConfig.l1 : 
+                                     leitnerLevel === 2 ? leitnerConfig.l2 : 
+                                     leitnerLevel === 3 ? leitnerConfig.l3 : leitnerConfig.l4;
+                                     
                         nextReview = Date.now() + (days * 24 * 60 * 60 * 1000);
                     } else if (score < 50) {
-                        leitnerLevel = 1;
-                        nextReview = Date.now() + (24 * 60 * 60 * 1000);
+                        leitnerLevel = 0;
+                        // Failure Penalty: 50% of Level 1 time
+                        nextReview = Date.now() + ((leitnerConfig.l1 * 0.5) * 24 * 60 * 60 * 1000); 
+                    } else {
+                        // Mediocre: Wait Level 1 time
+                        nextReview = Date.now() + (leitnerConfig.l1 * 24 * 60 * 60 * 1000);
                     }
                 }
 
-                const newP = { ...progress, [`${m}-${d}`]: { status, score, date: new Date().toLocaleString(), queue, nextReview, leitnerLevel } };
-                setProgress(newP); localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(newP));
+                // SAVE CONFIG WITH PROGRESS
+                const newP = { 
+                    ...progress, 
+                    [`${m}-${d}`]: { status, score, date: new Date().toLocaleString(), queue, nextReview, leitnerLevel },
+                    _settings: { pressureMode, leitnerConfig } // Persist Config
+                };
+                
+                setProgress(newP); 
+                localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(newP));
             };
             const markStudyComplete = (mId, deckName) => { saveProgress(mId, deckName, 'Completed', 100); };
 
@@ -2070,7 +2099,52 @@
                                         </div>
                                     </div>
                                 )}
-                                {showSettings && (<div className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"> <div className="bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-slide-in border border-slate-700"> <h3 className="text-2xl font-bold mb-4 dark:text-white text-jpm-primary font-quote"><i className="fas fa-cog mr-2 text-jpm-accent"></i>Settings</h3> <div className="space-y-4"> <button onClick={handleExport} className="w-full bg-blue-900/50 text-blue-100 py-3 rounded-xl font-bold hover:bg-blue-800 border border-blue-800 hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]"><i className="fas fa-download mr-2"></i>Backup Data</button> <label className="block w-full bg-slate-800 text-gray-300 py-3 rounded-xl font-bold text-center cursor-pointer hover:bg-slate-700 border border-slate-700 transition-colors hover:shadow-[0_0_15px_rgba(197,157,95,0.2)]"><i className="fas fa-upload mr-2"></i>Restore Data <input type="file" className="hidden" onChange={handleImport} accept=".json" /></label> <button onClick={runTests} className="md:hidden w-full bg-slate-800 text-red-400 py-3 rounded-xl font-bold hover:bg-slate-700 border border-slate-700"><i className="fas fa-bug mr-2"></i>Run Diagnostics</button> </div> <button onClick={() => setShowSettings(false)} className="w-full mt-6 bg-slate-800 border border-slate-700 text-gray-400 py-3 rounded-xl font-bold hover:bg-slate-700">Close</button> </div> </div>)}
+                                {showSettings && (
+                                    <div className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                                        <div className="bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-slide-in border border-slate-700 max-h-[90vh] overflow-y-auto">
+                                            <h3 className="text-2xl font-bold mb-4 dark:text-white text-jpm-primary font-quote"><i className="fas fa-cog mr-2 text-jpm-accent"></i>Settings</h3>
+                                            
+                                            <div className="space-y-4">
+                                                {/* DATA CONTROLS */}
+                                                <div className="bg-slate-800 p-3 rounded-xl border border-slate-700">
+                                                    <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 font-mono">Data Management</h4>
+                                                    <button onClick={handleExport} className="w-full bg-blue-900/30 text-blue-200 py-2 rounded-lg font-bold hover:bg-blue-800 border border-blue-800/50 mb-2 text-xs"><i className="fas fa-download mr-2"></i>Backup</button>
+                                                    <label className="block w-full bg-slate-700/50 text-gray-300 py-2 rounded-lg font-bold text-center cursor-pointer hover:bg-slate-700 border border-slate-600 text-xs"><i className="fas fa-upload mr-2"></i>Restore <input type="file" className="hidden" onChange={handleImport} accept=".json" /></label>
+                                                </div>
+
+                                                {/* CRAM SCHEDULE CONTROLS */}
+                                                <div className="bg-slate-800 p-3 rounded-xl border border-slate-700">
+                                                    <h4 className="text-xs font-bold text-jpm-accent uppercase mb-3 font-mono"><i className="fas fa-stopwatch mr-1"></i>Review Schedule (Hours)</h4>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {[1, 2, 3, 4].map(lvl => (
+                                                            <div key={lvl} className="flex flex-col">
+                                                                <label className="text-[10px] text-gray-500 font-bold mb-1">Level {lvl}</label>
+                                                                <input 
+                                                                    type="number" 
+                                                                    value={leitnerConfig[`l${lvl}`] * 24} // Show as Hours
+                                                                    onChange={(e) => {
+                                                                        const hours = parseFloat(e.target.value) || 0;
+                                                                        const newConfig = { ...leitnerConfig, [`l${lvl}`]: hours / 24 };
+                                                                        setLeitnerConfig(newConfig);
+                                                                        // Auto-save to persistence
+                                                                        const newP = { ...progress, _settings: { pressureMode, leitnerConfig: newConfig } };
+                                                                        setProgress(newP);
+                                                                        localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(newP));
+                                                                    }}
+                                                                    className="bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs font-mono focus:border-jpm-accent focus:outline-none"
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <p className="text-[9px] text-gray-500 mt-2 italic">* Set lower hours for aggressive cramming.</p>
+                                                </div>
+
+                                                <button onClick={runTests} className="md:hidden w-full bg-slate-800 text-red-400 py-3 rounded-xl font-bold hover:bg-slate-700 border border-slate-700"><i className="fas fa-bug mr-2"></i>Run Diagnostics</button>
+                                            </div>
+                                            <button onClick={() => setShowSettings(false)} className="w-full mt-6 bg-slate-800 border border-slate-700 text-gray-400 py-3 rounded-xl font-bold hover:bg-slate-700">Close</button>
+                                        </div>
+                                    </div>
+                                )}
                                 {showPrompts && (<div className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"> <div className="bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-lg w-full animate-slide-in border border-slate-700"> <h3 className="text-2xl font-bold mb-4 text-white font-quote"><i className="fas fa-robot mr-2 text-jpm-accent"></i>AI Prompts</h3> <div className="space-y-3 mb-6"> {data.prompts.map((p, i) => (<a key={i} href={p.Link || p.Links} target="_blank" className="flex items-center p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition group hover:shadow-[0_0_15px_rgba(197,157,95,0.2)]"> <i className="fas fa-file-alt text-jpm-accent mr-3"></i> <span className="font-semibold text-gray-200 group-hover:text-white">{p.Deck}</span> <i className="fas fa-external-link-alt ml-auto text-gray-500 group-hover:text-jpm-accent"></i> </a>))} </div> <button onClick={() => setShowPrompts(false)} className="w-full bg-slate-800 text-gray-400 py-3 rounded-xl font-bold hover:bg-slate-700 border border-slate-700">Close</button> </div> </div>)}
                                 {testResults && (<div className="fixed inset-0 bg-black bg-opacity-80 z-[10000] flex items-center justify-center p-4"> <div className="bg-slate-900 rounded-xl shadow-2xl p-6 max-w-lg w-full animate-slide-in border border-slate-700"> <h3 className="text-2xl font-bold mb-4 text-white font-quote">Regression Suite ({testResults.length} Tests)</h3> <div className="space-y-2 mb-6 max-h-96 overflow-y-auto"> {testResults.map(r => (<div key={r.id} className="flex justify-between items-center p-2 border-b dark:border-slate-700"> <span className="text-sm font-medium dark:text-gray-300"><span className="font-mono text-xs opacity-50 mr-2">#{r.id}</span>{r.name}</span> <span className={`font-bold text-xs px-2 py-1 rounded ${r.pass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.pass ? 'PASS' : 'FAIL'}</span> </div>))} </div> <button onClick={() => setTestResults(null)} className="w-full bg-blue-600 text-white py-2 rounded font-bold">Close</button> </div> </div>)}
                                 {modalDeck && (<div className="fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4"> <div className="bg-slate-900 rounded-2xl shadow-2xl p-8 max-w-md w-full animate-slide-in border border-slate-700"> <h3 className="text-2xl font-bold text-white mb-2 font-quote">{modalDeck.name}</h3> <div className="bg-slate-800 p-4 rounded-xl mb-6 border border-slate-700"> <p className="text-sm text-gray-400">Status: <span className="font-bold text-green-400">Completed</span></p> {(modalDeck.mode !== 'study' && modalDeck.mode !== 'skill') && <p className="text-sm text-gray-400">Last Score: <span className="font-bold text-white">{modalDeck.stats.score}%</span></p>} <p className="text-sm text-gray-400">Completed On: <span className="font-mono text-xs text-slate-500">{modalDeck.stats.date}</span></p> </div> <div className="flex gap-4"> <button onClick={() => setModalDeck(null)} className="flex-1 bg-slate-800 border border-slate-700 text-gray-300 py-3 rounded-xl font-bold hover:bg-slate-700">Close</button> <button onClick={() => restartSession(modalDeck.mode, modalDeck.name)} className="flex-1 bg-jpm-primary text-white py-3 rounded-xl font-bold hover:bg-jpm-dark shadow-lg shadow-blue-900/20 border border-jpm-primary"> {(modalDeck.mode === 'study' || modalDeck.mode === 'skill') ? 'Re-Open' : 'Restart'} </button> </div> </div> </div>)}
