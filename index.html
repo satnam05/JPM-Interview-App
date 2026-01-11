@@ -349,14 +349,16 @@
             hasRecognition: () => 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window,
             hasSynthesis: () => 'speechSynthesis' in window,
             voices: [],
-            phoneticMap: { "TUPE": "Too P", "SQL": "Sequel", "JPM": "J P M", "API": "A P I", "OOPS": "Oops", 
-            "JDBC": "J D B C", "PACS.002": "pacs two", "PACS.008": "pacs eight", "PACS.009": "pacs nine", 
-            "PAIN.001": "pain one", "PAIN.002": "pain two", "SWIFT": "Swift", "KYC": "K Y C", "AML": "A M L", 
-            "OFAC": "O F A C", "GDP": "G D P", "IP": "I P", "UI": "U I", "UX": "U X", "JSON": "Jason", "XML": 
-            "X M L", "HTML": "H T M L", "CSS": "C S S", "HTTP": "H T T P", "HTTPS": "H T T P S", "TCP": "T C P", 
-            "IPFS": "I P F S", "NFT": "N F T", "GUI": "G U I", "Pacs.002": "pacs two", "Pacs.008": "pacs eight", 
-            "Pacs.009": "pacs nine", "Pain.001": "pain one", "Pain.002": "pain two" },
-            
+            phoneticMap: {
+                "TUPE": "Too P", "SQL": "Sequel", "JPM": "J P M", "API": "A P I", "OOPS": "Oops",
+                "JDBC": "J D B C", "PACS.002": "pacs two", "PACS.008": "pacs eight", "PACS.009": "pacs nine",
+                "PAIN.001": "pain one", "PAIN.002": "pain two", "SWIFT": "Swift", "KYC": "K Y C", "AML": "A M L",
+                "OFAC": "O F A C", "GDP": "G D P", "IP": "I P", "UI": "U I", "UX": "U X", "JSON": "Jason", "XML":
+                    "X M L", "HTML": "H T M L", "CSS": "C S S", "HTTP": "H T T P", "HTTPS": "H T T P S", "TCP": "T C P",
+                "IPFS": "I P F S", "NFT": "N F T", "GUI": "G U I", "Pacs.002": "pacs two", "Pacs.008": "pacs eight",
+                "Pacs.009": "pacs nine", "Pain.001": "pain one", "Pain.002": "pain two"
+            },
+
             getPhoneticText: function (text) {
                 if (!text) return "";
                 return text.split(' ').map(word => {
@@ -375,7 +377,7 @@
             },
 
             /* CONTEXT: Adding global controls for Pitch and Rate to fix "fast/unnatural" voice issues */
-            voiceConfig: { lang: 'en-GB', gender: 'male', pitch: 1.0, rate: 0.9 },            
+            voiceConfig: { lang: 'en-GB', gender: 'male', pitch: 1.0, rate: 0.9 },
 
             speak: function (text) {
                 if (!this.hasSynthesis()) return;
@@ -485,193 +487,230 @@
         );
 
         // 2. Complex Visualizations
-        // --- COMMAND CENTER: 2x2 GRID (v20.74 HIGH FIDELITY) ---
-        const TechInsightsModal = ({ onClose }) => {
-            const [feed, setFeed] = useState([]);
-            const [blocks, setBlocks] = useState([]);
-            const [phase, setPhase] = useState(0);
-            const [activeArc, setActiveArc] = useState(0);
-            const [mempoolHash, setMempoolHash] = useState("0x...");
+        // --- JPM GLOBAL PAYMENTS COMMAND CENTER (DATA ENGINEERING EDITION) ---
+        const TechInsights = ({ onBack }) => {
+            const [tick, setTick] = useState(0);
+            const [logs, setLogs] = useState([]);
 
-            // Cycle Logic (Faster - 25ms tick)
+            // JPM-Specific Payment Rails & Data Concepts
+            const [metrics, setMetrics] = useState({
+                tps: 1450, // Transactions Per Second
+                stpRate: 98.2, // Straight Through Processing
+                kafkaLag: 12, // ms
+                liquidity: 42.5, // $Bn Intraday
+                failed: 0
+            });
+
+            // Simulate Live Data Stream
             useEffect(() => {
                 const interval = setInterval(() => {
-                    setPhase(p => {
-                        const next = p + 1;
-                        if (next >= 100) {
-                            setActiveArc(a => (a + 1) % 6);
-                            return 0;
-                        }
-                        return next;
-                    });
-                }, 25);
+                    setTick(t => t + 1);
 
-                // Mempool Hashing Effect
-                const hashInterval = setInterval(() => {
-                    setMempoolHash("0x" + Math.random().toString(16).substring(2, 8).toUpperCase());
-                }, 80);
+                    // 1. Randomize Metrics
+                    setMetrics(prev => ({
+                        tps: Math.floor(1400 + Math.random() * 300),
+                        stpRate: (98.0 + Math.random() * 1.5).toFixed(1),
+                        kafkaLag: Math.floor(10 + Math.random() * 15),
+                        liquidity: (42 + Math.random()).toFixed(2),
+                        failed: prev.failed + (Math.random() > 0.8 ? 1 : 0)
+                    }));
 
-                return () => { clearInterval(interval); clearInterval(hashInterval); };
+                    // 2. Generate ISO 20022 Traffic Logs
+                    const types = ['pacs.008.001.08', 'pain.001.001.09', 'camt.053.001.08', 'pacs.002.001.10'];
+                    const regions = ['EMEA (London)', 'NAMR (New York)', 'APAC (Singapore)', 'LATAM (Sao Paulo)'];
+                    const status = ['ACK', 'ACK', 'ACK', 'ACK', 'NACK (Schema)', 'HELD (Sanctions)'];
+
+                    const newLog = {
+                        id: Date.now(),
+                        time: new Date().toISOString().split('T')[1].slice(0, 8),
+                        type: types[Math.floor(Math.random() * types.length)],
+                        region: regions[Math.floor(Math.random() * regions.length)],
+                        status: status[Math.floor(Math.random() * status.length)],
+                        latency: Math.floor(Math.random() * 150) + 'ms'
+                    };
+
+                    setLogs(prev => [newLog, ...prev].slice(0, 7)); // Keep last 7 logs
+
+                }, 1500);
+                return () => clearInterval(interval);
             }, []);
 
-            // Sync Logic: Q1 Impact -> Q2 Mine
-            useEffect(() => {
-                if (phase === 95) { // Projectile lands
-                    const newBlock = {
-                        id: 19240 + blocks.length,
-                        hash: mempoolHash,
-                    };
-                    setBlocks(prev => [newBlock, ...prev].slice(0, 5));
-                }
-            }, [phase, mempoolHash, blocks.length]);
-
-            // SWIFT Logic (Hybrid)
-            const [swiftState, setSwiftState] = useState('GREEN');
-
-            useEffect(() => {
-                if (phase === 0) {
-                    const r = Math.random();
-                    if (r > 0.9) setSwiftState('RED');
-                    else if (r > 0.8) setSwiftState('AMBER');
-                    else setSwiftState('GREEN');
-                }
-
-                if (phase === 50) {
-                    const txnId = `TRX-${1000 + Math.floor(Math.random() * 9000)}`;
-                    let status = 'SETTLED';
-                    let kyc = 'PASS', aml = 'CLEAR', ofac = 'CLEAR';
-
-                    if (swiftState === 'RED') { status = 'BLOCKED'; ofac = 'HIT'; }
-                    if (swiftState === 'AMBER') { status = 'REVIEW'; aml = 'ALERT'; }
-
-                    const log = {
-                        id: txnId,
-                        kyc, aml, ofac, status,
-                        time: new Date().toLocaleTimeString('en-GB')
-                    };
-                    setFeed(prev => [log, ...prev].slice(0, 10));
-                }
-            }, [phase, swiftState]);
-
-            // Real World SVG Coords (approx 240x120 canvas)
-            // NY: 65,40 | LDN: 118,28 | DXB: 148,50 | DEL: 165,52 | SG: 192,68 | TOK: 215,40
-            const sunPath = [
-                { id: 'NY-LDN', d: "M 65 40 Q 90 20 118 28" },
-                { id: 'LDN-DXB', d: "M 118 28 Q 130 40 148 50" },
-                { id: 'DXB-DEL', d: "M 148 50 Q 155 45 165 52" },
-                { id: 'DEL-SG', d: "M 165 52 Q 180 60 192 68" },
-                { id: 'SG-TOK', d: "M 192 68 Q 205 50 215 40" },
-                { id: 'TOK-NY', d: "M 215 40 Q 240 20 260 40 M -20 40 Q 20 20 65 40" }
-            ];
-
             return (
-                <div className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-xl flex flex-col p-2 md:p-6 overflow-hidden font-mono text-gray-200">
-                    <div className="flex justify-between items-center mb-2 border-b border-slate-800 pb-2">
-                        <div className="flex items-center gap-3"><div className="w-10 h-10 bg-jpm-primary rounded flex items-center justify-center text-jpm-accent border border-jpm-accent"><i className="fas fa-globe text-lg"></i></div><div><h2 className="text-lg md:text-xl font-bold text-white tracking-tight font-quote">JP MORGAN GLOBAL PAYMENTS & SETTLEMENT COMMAND</h2><p className="text-[9px] text-gray-400 uppercase">System Status: <span className="text-green-400">OPTIMAL</span> | Active Nodes: 6</p></div></div>
-                        <button onClick={onClose} className="bg-slate-800 text-jpm-accent p-2 rounded-full hover:bg-slate-700 transition border border-slate-700 hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]"><i className="fas fa-times"></i></button>
+                <div className="h-full flex flex-col bg-slate-950 text-white animate-fade-in overflow-hidden">
+                    {/* HEADER: DATA PRODUCT CONTEXT */}
+                    <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 backdrop-blur">
+                        <div>
+                            <h2 className="text-2xl font-bold font-quote text-white flex items-center gap-3">
+                                <i className="fas fa-network-wired text-jpm-accent"></i>
+                                Global Payments Command Center
+                            </h2>
+                            <p className="text-[10px] text-gray-400 font-mono uppercase tracking-widest mt-1">
+                                <span className="text-green-400">● LIVE</span> | DATA MESH NODE: PAYMENTS-CORE-V2 | KAFKA CLUSTER: US-EAST-1
+                            </p>
+                        </div>
+                        <button onClick={onBack} className="px-4 py-2 rounded-lg border border-slate-700 hover:bg-slate-800 text-xs font-bold transition">
+                            EXIT TERMINAL
+                        </button>
                     </div>
 
-                    <div className="flex-grow cmd-grid overflow-hidden">
+                    {/* DASHBOARD GRID */}
+                    <div className="flex-grow p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-4 gap-6">
 
-                        {/* Q1: POLITICAL WORLD MAP (Digital Twin) */}
-                        <div className="bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-slate-800 to-black rounded-xl border border-slate-700 relative overflow-hidden shadow-2xl flex flex-col">
-                            <div className="absolute top-2 left-3 z-10"><h3 className="text-jpm-accent font-bold text-[10px] tracking-widest"><i className="fas fa-coins mr-1"></i>ASSETS & TOKENIZATION (KINEXYS)</h3></div>
-                            <div className="flex-grow flex items-center justify-center bg-slate-900/50">
-                                <svg viewBox="0 0 240 120" className="w-full h-full">
-                                    {/* High Fidelity Continents */}
-                                    <g stroke="#C59D5F" strokeWidth="0.2" fill="rgba(30, 41, 59, 0.6)">
-                                        <path d="M 20 20 L 50 18 L 60 40 L 40 50 L 30 45 L 20 20 Z M 40 25 L 55 25" /> {/* NA + Canada/US stroke */}
-                                        <path d="M 45 50 L 65 52 L 70 80 L 50 90 L 40 70 Z M 50 65 L 65 65" /> {/* SA + Brazil stroke */}
-                                        <path d="M 100 25 L 125 20 L 160 20 L 180 30 L 170 50 L 150 50 L 140 60 L 110 40 Z M 130 30 L 130 50 M 150 25 L 150 45" /> {/* Eurasia + Region strokes */}
-                                        <path d="M 110 45 L 130 45 L 140 65 L 120 75 L 105 60 Z M 115 55 L 135 55" /> {/* Africa + Region stroke */}
-                                        <path d="M 190 70 L 210 70 L 215 85 L 195 85 Z" /> {/* Australia */}
-                                    </g>
+                        {/* COL 1: HIGH LEVEL KPI (Executive View) */}
+                        <div className="md:col-span-1 space-y-4">
+                            <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-lg relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition"><i className="fas fa-bolt text-6xl text-yellow-500"></i></div>
+                                <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Ingestion Rate (TPS)</h3>
+                                <div className="text-4xl font-mono font-bold text-white">{metrics.tps}</div>
+                                <div className="text-[10px] text-green-400 mt-2 font-mono flex items-center gap-1"><i className="fas fa-arrow-up"></i> +4.2% vs 5m avg</div>
+                            </div>
 
-                                    {/* Power 6 Nodes */}
-                                    <circle cx="65" cy="40" r="1.5" fill="white"><title>NY</title></circle>
-                                    <circle cx="118" cy="28" r="1.5" fill="white"><title>LDN</title></circle>
-                                    <circle cx="148" cy="50" r="1.5" fill="white"><title>DXB</title></circle>
-                                    <circle cx="165" cy="52" r="1.5" fill="white"><title>DEL</title></circle>
-                                    <circle cx="192" cy="68" r="1.5" fill="white"><title>SG</title></circle>
-                                    <circle cx="215" cy="40" r="1.5" fill="white"><title>TOK</title></circle>
+                            <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-lg relative overflow-hidden">
+                                <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">STP Rate (Straight Through)</h3>
+                                <div className={`text-4xl font-mono font-bold ${metrics.stpRate > 98 ? 'text-green-400' : 'text-yellow-400'}`}>{metrics.stpRate}%</div>
+                                <div className="w-full bg-slate-800 h-1 mt-3 rounded-full overflow-hidden">
+                                    <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${metrics.stpRate}%` }}></div>
+                                </div>
+                            </div>
 
-                                    {/* Ballistic Projectile */}
-                                    <circle r="2.5" fill="#FFD700" filter="url(#glow)">
-                                        <animateMotion repeatCount="indefinite" dur="1.5s" path={sunPath[activeArc].d} keyPoints={phase / 100 + ';' + (phase + 1) / 100} keyTimes="0;1" calcMode="linear" />
-                                    </circle>
-                                    <defs><filter id="glow"><feGaussianBlur stdDeviation="2" result="coloredBlur" /><feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs>
-                                </svg>
+                            <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-lg">
+                                <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Intraday Liquidity</h3>
+                                <div className="text-2xl font-mono font-bold text-blue-300">${metrics.liquidity} Bn</div>
+                                <p className="text-[9px] text-gray-500 mt-1">Real-time projection (USD + GBP + EUR)</p>
                             </div>
                         </div>
 
-                        {/* Q2: KINEXYS CHAIN (Hashing & Consensus) */}
-                        <div className="bg-slate-900 rounded-xl border border-slate-700 p-4 relative overflow-hidden shadow-2xl flex flex-col">
-                            <div className="flex justify-between items-center mb-2"><h3 className="text-green-400 font-bold text-[10px] tracking-widest"><i className="fas fa-link mr-1"></i>KINEXYS LEDGER</h3><span className="text-[9px] text-gray-500">Block Height: 19,204,442</span></div>
-                            <div className="flex-grow flex items-center gap-2 overflow-hidden px-4">
-                                {blocks.map((b, i) => (
-                                    <div key={b.id} className="animate-slide-left min-w-[60px] h-16 bg-slate-800 border-2 border-green-500/50 rounded flex flex-col items-center justify-center relative shadow-[0_0_15px_rgba(34,197,94,0.2)]">
-                                        <div className="absolute -left-3 top-1/2 w-3 h-0.5 bg-green-500"></div>
-                                        <span className="text-[9px] text-green-300 font-bold">BLOCK</span>
-                                        <span className="text-[7px] text-gray-400">#{b.id}</span>
-                                        <span className="text-[6px] text-gray-600 mt-1">{b.hash}</span>
-                                    </div>
-                                ))}
-                                {/* Mempool Block (Scrambling) */}
-                                <div className={`min-w-[60px] h-16 border-2 border-dashed rounded flex flex-col items-center justify-center transition-colors duration-100 ${phase > 90 ? 'border-green-400 bg-green-900/20 shadow-[0_0_20px_rgba(34,197,94,0.5)]' : 'border-slate-600 opacity-50'}`}>
-                                    <span className="text-[8px] text-gray-400 mb-1">HASHING</span>
-                                    <span className={`text-[7px] font-mono ${phase > 90 ? 'text-white font-bold' : 'text-gray-500'}`}>{mempoolHash}</span>
+                        {/* COL 2 & 3: DATA ENGINEERING & PIPELINE HEALTH */}
+                        <div className="md:col-span-2 flex flex-col gap-6">
+                            {/* Visualizing the Pipeline */}
+                            <div className="bg-slate-900 rounded-xl border border-slate-800 p-1 flex-grow flex flex-col relative overflow-hidden">
+                                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
+                                <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+                                    <h3 className="text-xs font-bold text-jpm-accent uppercase tracking-widest"><i className="fas fa-database mr-2"></i>Payment Data Pipeline (Lambda Arch)</h3>
+                                    <span className="text-[9px] bg-slate-800 px-2 py-1 rounded border border-slate-700 text-blue-300">Spark Streaming: ACTIVE</span>
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* Q3: SWIFT RAIL (Linear 4-Corner Pipe) */}
-                        <div className="bg-slate-900 rounded-xl border border-slate-700 p-4 relative overflow-hidden shadow-2xl">
-                            <div className="absolute top-3 left-3"><h3 className="text-blue-400 font-bold text-[10px] tracking-widest"><i className="fas fa-network-wired mr-1"></i>TRANSACTION BANKING (SWIFT ISO 20022)</h3></div>
-                            <div className="w-full h-full flex items-center justify-between px-4 mt-2">
-                                {/* Nodes */}
-                                <div className="flex flex-col items-center z-10"><i className="fas fa-building text-slate-400 text-lg"></i><span className="text-[8px] mt-1 text-gray-500">CORP</span></div>
-                                <div className="h-0.5 bg-slate-700 flex-grow relative mx-2">
-                                    {/* Packet A (Blue -> Purple) */}
-                                    <div className={`absolute top-[-4px] w-2 h-2 rounded-full shadow-lg transition-all duration-75 ${phase > 50 && swiftState !== 'GREEN' ? 'opacity-0' : 'opacity-100'} ${phase < 33 ? 'bg-blue-500' : 'bg-purple-500'}`} style={{ left: `${phase > 50 && swiftState !== 'GREEN' ? 50 : phase}%` }}></div>
-                                    <div className="absolute top-[-15px] text-[7px] text-gray-400 transition-all duration-75" style={{ left: `${phase}%`, opacity: phase > 50 && swiftState !== 'GREEN' ? 0 : 1 }}>{phase < 33 ? 'pain.001' : 'pacs.008'}</div>
-                                    {/* Explosion Effect */}
-                                    {phase > 48 && phase < 55 && swiftState === 'RED' && <div className="absolute left-1/2 top-[-10px] w-6 h-6 border-2 border-red-500 rounded-full animate-ripple"></div>}
-                                </div>
-                                <div className="flex flex-col items-center z-10"><i className="fas fa-university text-blue-400 text-lg"></i><span className="text-[8px] mt-1 text-gray-500">DEBTOR</span></div>
-                                <div className="h-0.5 bg-slate-700 flex-grow relative mx-2"></div>
-                                <div className="flex flex-col items-center z-10 relative">
-                                    <div className={`w-10 h-10 rounded-full border flex items-center justify-center transition-colors ${phase > 48 && phase < 55 ? (swiftState === 'RED' ? 'bg-red-900 border-red-500 text-red-500' : swiftState === 'AMBER' ? 'bg-amber-900 border-amber-500 text-amber-500' : 'bg-green-900 border-green-500 text-green-500') : 'bg-slate-800 border-slate-600 text-gray-400'}`}>
-                                        <i className="fas fa-radar"></i>
-                                    </div>
-                                    <span className="text-[8px] mt-1 text-gray-500">INTERMED</span>
-                                </div>
-                                <div className="h-0.5 bg-slate-700 flex-grow relative mx-2"></div>
-                                <div className="flex flex-col items-center z-10"><i className="fas fa-university text-green-400 text-lg"></i><span className="text-[8px] mt-1 text-gray-500">CREDITOR</span></div>
-                            </div>
-                        </div>
-
-                        {/* Q4: PIPELINE LOG */}
-                        <div className="bg-slate-900 rounded-xl border border-slate-700 flex flex-col overflow-hidden shadow-lg">
-                            <div className="p-2 border-b border-slate-800 bg-slate-950/50 flex justify-between items-center">
-                                <h3 className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">Compliance Log</h3>
-                                <span className="text-[9px] text-gray-500 font-mono">LIVE FEED</span>
-                            </div>
-                            <div className="flex-grow overflow-y-auto p-2 space-y-1 scrollbar-thin">
-                                {feed.map((log, i) => (
-                                    <div key={i} className={`flex justify-between items-center p-2 rounded border-l-2 text-[9px] font-mono animate-slide-in ${log.status === 'BLOCKED' ? 'bg-red-900/10 border-red-500' : log.status === 'REVIEW' ? 'bg-amber-900/10 border-amber-500' : 'bg-green-900/10 border-green-500'}`}>
-                                        <span className="text-gray-500 w-12">{log.time}</span>
-                                        <span className="font-bold text-white w-16">{log.id}</span>
-                                        <div className="flex gap-1">
-                                            <span className={`px-1 rounded ${log.kyc === 'PASS' ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'}`}>KYC</span>
-                                            <span className={`px-1 rounded ${log.aml === 'CLEAR' ? 'bg-green-900 text-green-400' : 'bg-amber-900 text-amber-400'}`}>AML</span>
-                                            <span className={`px-1 rounded ${log.ofac === 'CLEAR' ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'}`}>OFAC</span>
+                                <div className="flex-grow p-6 flex items-center justify-between relative z-10">
+                                    {/* Step 1: Ingest */}
+                                    <div className="text-center">
+                                        <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-blue-500 flex items-center justify-center text-xl shadow-[0_0_15px_rgba(59,130,246,0.3)] animate-pulse">
+                                            <i className="fas fa-satellite-dish text-blue-400"></i>
                                         </div>
-                                        <span className={`font-bold ${log.status === 'BLOCKED' ? 'text-red-500' : log.status === 'REVIEW' ? 'text-amber-500' : 'text-green-500'}`}>{log.status}</span>
+                                        <p className="text-[9px] font-bold mt-2 uppercase">Gateway</p>
+                                        <p className="text-[9px] text-gray-500 font-mono">Rest/MQ</p>
                                     </div>
-                                ))}
+
+                                    {/* Connector */}
+                                    <div className="flex-grow h-0.5 bg-slate-700 mx-2 relative">
+                                        <div className="absolute top-1/2 left-0 -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full animate-[ping_2s_linear_infinite]"></div>
+                                    </div>
+
+                                    {/* Step 2: Kafka */}
+                                    <div className="text-center">
+                                        <div className="w-16 h-16 rounded-lg bg-slate-800 border border-slate-600 flex flex-col items-center justify-center relative">
+                                            <i className="fas fa-layer-group text-white mb-1"></i>
+                                            <span className="text-[8px] font-mono text-orange-400">Lag: {metrics.kafkaLag}ms</span>
+                                        </div>
+                                        <p className="text-[9px] font-bold mt-2 uppercase">Kafka</p>
+                                    </div>
+
+                                    {/* Connector */}
+                                    <div className="flex-grow h-0.5 bg-slate-700 mx-2"></div>
+
+                                    {/* Step 3: Transformation */}
+                                    <div className="text-center">
+                                        <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-purple-500 flex items-center justify-center text-xl shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                                            <i className="fas fa-cogs text-purple-400 animate-[spin_4s_linear_infinite]"></i>
+                                        </div>
+                                        <p className="text-[9px] font-bold mt-2 uppercase">Spark ETL</p>
+                                        <p className="text-[9px] text-gray-500 font-mono">Schema Valid.</p>
+                                    </div>
+
+                                    {/* Connector */}
+                                    <div className="flex-grow h-0.5 bg-slate-700 mx-2"></div>
+
+                                    {/* Step 4: Storage */}
+                                    <div className="text-center">
+                                        <div className="w-16 h-16 rounded-lg bg-slate-800 border border-green-700 flex flex-col items-center justify-center">
+                                            <i className="fas fa-server text-green-500 mb-1"></i>
+                                            <span className="text-[8px] font-mono text-gray-400">Data Lake</span>
+                                        </div>
+                                        <p className="text-[9px] font-bold mt-2 uppercase">Snowflake</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Live Message Log */}
+                            <div className="bg-black/40 rounded-xl border border-slate-800 p-4 font-mono text-[10px] h-48 overflow-hidden flex flex-col">
+                                <div className="flex justify-between border-b border-slate-800 pb-2 mb-2">
+                                    <span className="text-gray-400">LIVE MESSAGE TRACE (ISO 20022)</span>
+                                    <span className="text-jpm-accent">LISTENING...</span>
+                                </div>
+                                <div className="space-y-1.5 overflow-y-auto scrollbar-hide">
+                                    {logs.map((log) => (
+                                        <div key={log.id} className="grid grid-cols-12 gap-2 animate-slide-in">
+                                            <span className="col-span-2 text-gray-500">{log.time}</span>
+                                            <span className="col-span-3 text-blue-300">{log.type}</span>
+                                            <span className="col-span-3 text-white">{log.region}</span>
+                                            <span className={`col-span-2 font-bold ${log.status.includes('NACK') || log.status.includes('HELD') ? 'text-red-500' : 'text-green-500'}`}>{log.status}</span>
+                                            <span className="col-span-2 text-right text-gray-600">{log.latency}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
+                        {/* COL 4: REGULATORY & COMPLIANCE */}
+                        <div className="md:col-span-1 flex flex-col gap-4">
+                            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex-grow">
+                                <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-3">Sanctions Screening</h3>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="flex justify-between text-[10px] mb-1">
+                                            <span className="text-white">OFAC / SDNs</span>
+                                            <span className="text-green-400">0.02% Hit Rate</span>
+                                        </div>
+                                        <div className="w-full bg-slate-800 h-1.5 rounded-full"><div className="w-[15%] h-full bg-blue-500 rounded-full"></div></div>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between text-[10px] mb-1">
+                                            <span className="text-white">PEP (Politically Exposed)</span>
+                                            <span className="text-yellow-400">1.4% Review</span>
+                                        </div>
+                                        <div className="w-full bg-slate-800 h-1.5 rounded-full"><div className="w-[35%] h-full bg-yellow-600 rounded-full"></div></div>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between text-[10px] mb-1">
+                                            <span className="text-white">Adverse Media</span>
+                                            <span className="text-gray-400">Low Risk</span>
+                                        </div>
+                                        <div className="w-full bg-slate-800 h-1.5 rounded-full"><div className="w-[5%] h-full bg-gray-500 rounded-full"></div></div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 pt-6 border-t border-slate-800">
+                                    <div className="text-center">
+                                        <h4 className="text-3xl font-bold text-white">{metrics.failed}</h4>
+                                        <p className="text-[9px] text-red-400 font-bold uppercase">Blocked Transactions</p>
+                                        <p className="text-[8px] text-gray-600 mt-1">Requiring L2 Analyst Review</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* FOOTER TICKER */}
+                    <div className="bg-jpm-primary border-t border-slate-800 py-2 px-4 flex items-center gap-8 overflow-hidden whitespace-nowrap">
+                        <span className="text-[9px] font-bold text-jpm-accent">SYSTEM STATUS:</span>
+                        <div className="flex gap-8 animate-[marquee_20s_linear_infinite] text-[9px] font-mono text-gray-400">
+                            <span>API_GATEWAY_EU: <span className="text-green-500">ONLINE</span> (12ms)</span>
+                            <span>SWIFT_MX_CONVERTER: <span className="text-green-500">STABLE</span></span>
+                            <span>LEDGER_SYNC: <span className="text-yellow-500">SYNCING (98%)</span></span>
+                            <span>FRAUD_AI_MODEL_V4: <span className="text-green-500">ACTIVE</span></span>
+                            <span>ONYX_BLOCKCHAIN_NODE: <span className="text-blue-400">CONNECTED</span></span>
+                            <span>DATABASE_REPLICA_APAC: <span className="text-green-500">HEALTHY</span></span>
+                        </div>
                     </div>
                 </div>
             );
@@ -1009,484 +1048,484 @@
         };
 
         // ---START AI MODE ---
-            // --- GEMINI LIVE VOICE MODE (UPDATED: AUTO-SCROLL ON LOAD + SCROLL DOWN BUTTON) ---
-            const AIMode = ({ onEnd, toggleFocus, isFocusMode, gender, speed, region, setGender, setSpeed, setRegion }) => {
-                const [status, setStatus] = useState("IDLE");
-                const [thinkingMode, setThinkingMode] = useState("low");
-                const [messages, setMessages] = useState([]);
-                const [url, setUrl] = useState(localStorage.getItem('jpm_ai_url') || "");
-                const [showConfig, setShowConfig] = useState(!localStorage.getItem('jpm_ai_url'));
-                
-                // --- INPUT MODAL STATES ---
-                const [isComposerOpen, setIsComposerOpen] = useState(false);
-                const [reviewMode, setReviewMode] = useState(false);
-                const [inputValue, setInputValue] = useState("");
-                const [inputAudioUrl, setInputAudioUrl] = useState(null);
-                
-                // --- RECORDING & WPM STATES ---
-                const [isRecording, setIsRecording] = useState(false);
-                const [liveWpm, setLiveWpm] = useState(0);
-                const [interimText, setInterimText] = useState("");
-                
-                // --- REFS ---
-                const recognitionRef = useRef(null);
-                const mediaRecorderRef = useRef(null);
-                const audioChunksRef = useRef([]);
-                const speechStartRef = useRef(0);
-                const totalSpeechWordsRef = useRef(0);
-                const currentAudioRef = useRef(null);
-                const chatScrollRef = useRef(null); 
-                const [isPaused, setIsPaused] = useState(false);
+        // --- GEMINI LIVE VOICE MODE (UPDATED: AUTO-SCROLL ON LOAD + SCROLL DOWN BUTTON) ---
+        const AIMode = ({ onEnd, toggleFocus, isFocusMode, gender, speed, region, setGender, setSpeed, setRegion }) => {
+            const [status, setStatus] = useState("IDLE");
+            const [thinkingMode, setThinkingMode] = useState("low");
+            const [messages, setMessages] = useState([]);
+            const [url, setUrl] = useState(localStorage.getItem('jpm_ai_url') || "");
+            const [showConfig, setShowConfig] = useState(!localStorage.getItem('jpm_ai_url'));
 
-                // --- 1. CORE AI LIFECYCLE ---
-                
-                useEffect(() => {
-                    return () => {
-                        stopEverything();
-                        if (currentAudioRef.current) {
-                            currentAudioRef.current.pause();
-                            currentAudioRef.current = null;
-                        }
-                    };
-                }, []);
+            // --- INPUT MODAL STATES ---
+            const [isComposerOpen, setIsComposerOpen] = useState(false);
+            const [reviewMode, setReviewMode] = useState(false);
+            const [inputValue, setInputValue] = useState("");
+            const [inputAudioUrl, setInputAudioUrl] = useState(null);
 
-                // AUTO-SCROLL LOGIC (Triggers on Load, New Message, or Status Change)
-                useEffect(() => {
-                    if (chatScrollRef.current) {
-                        chatScrollRef.current.scrollTo({
-                            top: chatScrollRef.current.scrollHeight,
-                            behavior: 'smooth'
-                        });
-                    }
-                }, [messages, status, interimText]); 
+            // --- RECORDING & WPM STATES ---
+            const [isRecording, setIsRecording] = useState(false);
+            const [liveWpm, setLiveWpm] = useState(0);
+            const [interimText, setInterimText] = useState("");
 
-                useEffect(() => {
-                    const handleEndSignal = () => { stopEverything(); onEnd(0, []); };
-                    window.addEventListener('jpm-trigger-end', handleEndSignal);
-                    return () => window.removeEventListener('jpm-trigger-end', handleEndSignal);
-                }, [onEnd]);
+            // --- REFS ---
+            const recognitionRef = useRef(null);
+            const mediaRecorderRef = useRef(null);
+            const audioChunksRef = useRef([]);
+            const speechStartRef = useRef(0);
+            const totalSpeechWordsRef = useRef(0);
+            const currentAudioRef = useRef(null);
+            const chatScrollRef = useRef(null);
+            const [isPaused, setIsPaused] = useState(false);
 
-                useEffect(() => {
-                    if (status === "SPEAKING" && currentAudioRef.current && messages.length > 0) {
-                        const lastAiMsg = [...messages].reverse().find(m => m.role === 'model');
-                        if (lastAiMsg) {
-                            currentAudioRef.current.pause();
-                            speakResponse(lastAiMsg.text);
-                        }
-                    }
-                }, [gender, speed, region]);
+            // --- 1. CORE AI LIFECYCLE ---
 
-                useEffect(() => {
-                    const fetchCloudHistory = async () => {
-                        const aiUrl = localStorage.getItem('jpm_ai_url');
-                        if (!aiUrl) return;
-                        try {
-                            const res = await fetch(aiUrl, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ data: { action: "fetchHistory", userID: "satnam_default", sessionID: "voice-session-satnam" } })
-                            });
-                            const result = await res.json();
-                            if (result.data?.history) {
-                                const historicalMessages = [];
-                                result.data.history.forEach(h => {
-                                    if (h.userSaid) historicalMessages.push({ role: 'user', text: h.userSaid });
-                                    if (h.aiSaid) historicalMessages.push({ role: 'model', text: h.aiSaid });
-                                });
-                                setMessages(historicalMessages);
-                            }
-                        } catch (e) { console.error("History fetch failed:", e); }
-                    };
-                    fetchCloudHistory();
-                }, []);
-
-                // --- 2. RECORDING LOGIC ---
-                const countW = (s) => s && s.trim() ? s.trim().split(/\s+/).length : 0;
-                
-                const startAudioRec = async () => {
-                    try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                        mediaRecorderRef.current = new MediaRecorder(stream);
-                        audioChunksRef.current = [];
-                        mediaRecorderRef.current.ondataavailable = (event) => {
-                            if (event.data.size > 0) audioChunksRef.current.push(event.data);
-                        };
-                        mediaRecorderRef.current.onstop = () => {
-                            const type = mediaRecorderRef.current.mimeType || 'audio/webm';
-                            const audioBlob = new Blob(audioChunksRef.current, { type });
-                            const url = URL.createObjectURL(audioBlob);
-                            setInputAudioUrl(url);
-                            stream.getTracks().forEach(track => track.stop());
-                        };
-                        mediaRecorderRef.current.start();
-                    } catch (err) { console.warn("Audio recording failed", err); alert("Microphone blocked"); }
-                };
-
-                const startSpeechEngine = useCallback(() => {
-                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                    if (!SpeechRecognition) return;
-                    const recognition = new SpeechRecognition();
-                    recognition.continuous = true;
-                    recognition.interimResults = true;
-                    recognition.lang = 'en-GB';
-                    
-                    if (speechStartRef.current === 0) speechStartRef.current = Date.now();
-                    
-                    recognition.onresult = (event) => {
-                        let finalChunk = '';
-                        let interimChunk = '';
-                        for (let i = event.resultIndex; i < event.results.length; ++i) {
-                            if (event.results[i].isFinal) finalChunk += event.results[i][0].transcript;
-                            else interimChunk += event.results[i][0].transcript;
-                        }
-                        setInterimText(interimChunk);
-                        if (finalChunk) {
-                            totalSpeechWordsRef.current += countW(finalChunk);
-                            setInputValue(prev => (prev ? prev + ' ' : '') + finalChunk.trim());
-                            setInterimText("");
-                        }
-                        const currentSessionWords = totalSpeechWordsRef.current + countW(interimChunk);
-                        const mins = (Date.now() - speechStartRef.current) / 60000;
-                        const wpm = mins > 0.05 ? Math.round(currentSessionWords / mins) : 0;
-                        setLiveWpm(wpm);
-                    };
-
-                    recognition.onend = () => {
-                        if (recognitionRef.current && isRecording) { }
-                    };
-                    
-                    recognitionRef.current = recognition;
-                    recognition.start();
-                }, [isRecording]);
-
-                const toggleRecording = () => {
-                    if (isRecording) {
-                        if (recognitionRef.current) recognitionRef.current.stop();
-                        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop();
-                        setIsRecording(false);
-                        setInterimText("");
-                    } else {
-                        speechStartRef.current = 0;
-                        totalSpeechWordsRef.current = 0;
-                        setLiveWpm(0);
-                        setInputAudioUrl(null);
-                        setIsRecording(true);
-                        startAudioRec();
-                        startSpeechEngine();
-                    }
-                };
-                
-                const getWpmColor = (wpm) => { if (wpm === 0) return 'bg-gray-700 text-gray-400'; if (wpm < 110) return 'bg-yellow-900/50 text-yellow-300 border-yellow-700'; if (wpm > 160) return 'bg-red-900/50 text-red-300 border-red-700'; return 'bg-green-900/50 text-green-300 border-green-700'; };
-
-                // --- 3. INPUT FLOW HANDLERS ---
-                const openComposer = () => {
-                    if (status !== 'IDLE' && status !== 'PAUSED') return;
-                    setIsComposerOpen(true);
-                    setReviewMode(false);
-                    setInputValue("");
-                    setInputAudioUrl(null);
-                    setInterimText("");
-                    setLiveWpm(0);
-                };
-
-                const handleDoneWriting = () => {
-                    if (isRecording) toggleRecording();
-                    setReviewMode(true);
-                };
-
-                const handleEdit = () => { setReviewMode(false); };
-                const handleCancel = () => {
-                    if (isRecording) toggleRecording();
-                    setIsComposerOpen(false);
-                };
-
-                const handleSubmit = () => {
-                    setIsComposerOpen(false);
-                    const finalMsg = (inputValue + " " + interimText).trim();
-                    if (!finalMsg) return;
-                    sendMessage(finalMsg);
-                };
-
-                // --- 4. AI & AUDIO LOGIC ---
-                const stopEverything = () => {
-                    if (recognitionRef.current) recognitionRef.current.stop();
-                    if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
-                    window.speechSynthesis.cancel();
+            useEffect(() => {
+                return () => {
+                    stopEverything();
                     if (currentAudioRef.current) {
-                         currentAudioRef.current.pause();
-                         currentAudioRef.current = null;
-                    }
-                    setStatus("IDLE");
-                    setIsPaused(false);
-                    setIsComposerOpen(false);
-                    setIsRecording(false);
-                };
-
-                const togglePause = () => {
-                    if (!currentAudioRef.current) return;
-                    if (isPaused) {
-                        currentAudioRef.current.play();
-                        setIsPaused(false);
-                        setStatus("SPEAKING");
-                    } else {
                         currentAudioRef.current.pause();
-                        setIsPaused(true);
-                        setStatus("PAUSED");
+                        currentAudioRef.current = null;
                     }
                 };
+            }, []);
 
-                const cycleSpeed = () => {
-                    setSpeed(prev => {
-                        const next = parseFloat((prev + 0.1).toFixed(1));
-                        return next > 1.5 ? 1.0 : next;
+            // AUTO-SCROLL LOGIC (Triggers on Load, New Message, or Status Change)
+            useEffect(() => {
+                if (chatScrollRef.current) {
+                    chatScrollRef.current.scrollTo({
+                        top: chatScrollRef.current.scrollHeight,
+                        behavior: 'smooth'
                     });
-                };
+                }
+            }, [messages, status, interimText]);
 
-                const speakResponse = async (text) => {
+            useEffect(() => {
+                const handleEndSignal = () => { stopEverything(); onEnd(0, []); };
+                window.addEventListener('jpm-trigger-end', handleEndSignal);
+                return () => window.removeEventListener('jpm-trigger-end', handleEndSignal);
+            }, [onEnd]);
+
+            useEffect(() => {
+                if (status === "SPEAKING" && currentAudioRef.current && messages.length > 0) {
+                    const lastAiMsg = [...messages].reverse().find(m => m.role === 'model');
+                    if (lastAiMsg) {
+                        currentAudioRef.current.pause();
+                        speakResponse(lastAiMsg.text);
+                    }
+                }
+            }, [gender, speed, region]);
+
+            useEffect(() => {
+                const fetchCloudHistory = async () => {
                     const aiUrl = localStorage.getItem('jpm_ai_url');
+                    if (!aiUrl) return;
                     try {
-                        const response = await fetch(aiUrl, {
+                        const res = await fetch(aiUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ data: { action: "getSpeech", text, gender, speed, region } })
+                            body: JSON.stringify({ data: { action: "fetchHistory", userID: "satnam_default", sessionID: "voice-session-satnam" } })
                         });
-                        if (!response.ok) throw new Error("Backend failed");
-                        const blob = await response.blob();
-                        if (blob.size < 500) return setStatus("IDLE");
+                        const result = await res.json();
+                        if (result.data?.history) {
+                            const historicalMessages = [];
+                            result.data.history.forEach(h => {
+                                if (h.userSaid) historicalMessages.push({ role: 'user', text: h.userSaid });
+                                if (h.aiSaid) historicalMessages.push({ role: 'model', text: h.aiSaid });
+                            });
+                            setMessages(historicalMessages);
+                        }
+                    } catch (e) { console.error("History fetch failed:", e); }
+                };
+                fetchCloudHistory();
+            }, []);
 
-                        const audioUrl = URL.createObjectURL(blob);
-                        const audio = new Audio(audioUrl);
-                        currentAudioRef.current = audio;
+            // --- 2. RECORDING LOGIC ---
+            const countW = (s) => s && s.trim() ? s.trim().split(/\s+/).length : 0;
 
-                        audio.onplay = () => setStatus("SPEAKING");
-                        audio.onended = () => {
-                            URL.revokeObjectURL(audioUrl);
-                            setStatus("IDLE");
-                            currentAudioRef.current = null;
-                        };
-                        audio.onerror = () => setStatus("IDLE");
-                        await audio.play();
-                    } catch (e) {
-                        console.error(e);
+            const startAudioRec = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorderRef.current = new MediaRecorder(stream);
+                    audioChunksRef.current = [];
+                    mediaRecorderRef.current.ondataavailable = (event) => {
+                        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+                    };
+                    mediaRecorderRef.current.onstop = () => {
+                        const type = mediaRecorderRef.current.mimeType || 'audio/webm';
+                        const audioBlob = new Blob(audioChunksRef.current, { type });
+                        const url = URL.createObjectURL(audioBlob);
+                        setInputAudioUrl(url);
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    mediaRecorderRef.current.start();
+                } catch (err) { console.warn("Audio recording failed", err); alert("Microphone blocked"); }
+            };
+
+            const startSpeechEngine = useCallback(() => {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) return;
+                const recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-GB';
+
+                if (speechStartRef.current === 0) speechStartRef.current = Date.now();
+
+                recognition.onresult = (event) => {
+                    let finalChunk = '';
+                    let interimChunk = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) finalChunk += event.results[i][0].transcript;
+                        else interimChunk += event.results[i][0].transcript;
+                    }
+                    setInterimText(interimChunk);
+                    if (finalChunk) {
+                        totalSpeechWordsRef.current += countW(finalChunk);
+                        setInputValue(prev => (prev ? prev + ' ' : '') + finalChunk.trim());
+                        setInterimText("");
+                    }
+                    const currentSessionWords = totalSpeechWordsRef.current + countW(interimChunk);
+                    const mins = (Date.now() - speechStartRef.current) / 60000;
+                    const wpm = mins > 0.05 ? Math.round(currentSessionWords / mins) : 0;
+                    setLiveWpm(wpm);
+                };
+
+                recognition.onend = () => {
+                    if (recognitionRef.current && isRecording) { }
+                };
+
+                recognitionRef.current = recognition;
+                recognition.start();
+            }, [isRecording]);
+
+            const toggleRecording = () => {
+                if (isRecording) {
+                    if (recognitionRef.current) recognitionRef.current.stop();
+                    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop();
+                    setIsRecording(false);
+                    setInterimText("");
+                } else {
+                    speechStartRef.current = 0;
+                    totalSpeechWordsRef.current = 0;
+                    setLiveWpm(0);
+                    setInputAudioUrl(null);
+                    setIsRecording(true);
+                    startAudioRec();
+                    startSpeechEngine();
+                }
+            };
+
+            const getWpmColor = (wpm) => { if (wpm === 0) return 'bg-gray-700 text-gray-400'; if (wpm < 110) return 'bg-yellow-900/50 text-yellow-300 border-yellow-700'; if (wpm > 160) return 'bg-red-900/50 text-red-300 border-red-700'; return 'bg-green-900/50 text-green-300 border-green-700'; };
+
+            // --- 3. INPUT FLOW HANDLERS ---
+            const openComposer = () => {
+                if (status !== 'IDLE' && status !== 'PAUSED') return;
+                setIsComposerOpen(true);
+                setReviewMode(false);
+                setInputValue("");
+                setInputAudioUrl(null);
+                setInterimText("");
+                setLiveWpm(0);
+            };
+
+            const handleDoneWriting = () => {
+                if (isRecording) toggleRecording();
+                setReviewMode(true);
+            };
+
+            const handleEdit = () => { setReviewMode(false); };
+            const handleCancel = () => {
+                if (isRecording) toggleRecording();
+                setIsComposerOpen(false);
+            };
+
+            const handleSubmit = () => {
+                setIsComposerOpen(false);
+                const finalMsg = (inputValue + " " + interimText).trim();
+                if (!finalMsg) return;
+                sendMessage(finalMsg);
+            };
+
+            // --- 4. AI & AUDIO LOGIC ---
+            const stopEverything = () => {
+                if (recognitionRef.current) recognitionRef.current.stop();
+                if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
+                window.speechSynthesis.cancel();
+                if (currentAudioRef.current) {
+                    currentAudioRef.current.pause();
+                    currentAudioRef.current = null;
+                }
+                setStatus("IDLE");
+                setIsPaused(false);
+                setIsComposerOpen(false);
+                setIsRecording(false);
+            };
+
+            const togglePause = () => {
+                if (!currentAudioRef.current) return;
+                if (isPaused) {
+                    currentAudioRef.current.play();
+                    setIsPaused(false);
+                    setStatus("SPEAKING");
+                } else {
+                    currentAudioRef.current.pause();
+                    setIsPaused(true);
+                    setStatus("PAUSED");
+                }
+            };
+
+            const cycleSpeed = () => {
+                setSpeed(prev => {
+                    const next = parseFloat((prev + 0.1).toFixed(1));
+                    return next > 1.5 ? 1.0 : next;
+                });
+            };
+
+            const speakResponse = async (text) => {
+                const aiUrl = localStorage.getItem('jpm_ai_url');
+                try {
+                    const response = await fetch(aiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ data: { action: "getSpeech", text, gender, speed, region } })
+                    });
+                    if (!response.ok) throw new Error("Backend failed");
+                    const blob = await response.blob();
+                    if (blob.size < 500) return setStatus("IDLE");
+
+                    const audioUrl = URL.createObjectURL(blob);
+                    const audio = new Audio(audioUrl);
+                    currentAudioRef.current = audio;
+
+                    audio.onplay = () => setStatus("SPEAKING");
+                    audio.onended = () => {
+                        URL.revokeObjectURL(audioUrl);
                         setStatus("IDLE");
-                    }
-                };
+                        currentAudioRef.current = null;
+                    };
+                    audio.onerror = () => setStatus("IDLE");
+                    await audio.play();
+                } catch (e) {
+                    console.error(e);
+                    setStatus("IDLE");
+                }
+            };
 
-                const sendMessage = async (text) => {
-                    setStatus("THINKING");
-                    const userMsg = { role: 'user', text };
-                    const updatedHistory = [...messages, userMsg];
-                    setMessages(updatedHistory);
+            const sendMessage = async (text) => {
+                setStatus("THINKING");
+                const userMsg = { role: 'user', text };
+                const updatedHistory = [...messages, userMsg];
+                setMessages(updatedHistory);
 
-                    try {
-                        const payload = {
-                            data: {
-                                message: text,
-                                sessionID: "voice-session-satnam",
-                                history: updatedHistory.map(m => ({ role: m.role === 'model' ? 'ai' : 'user', text: m.text })),
-                                thinking_level: thinkingMode
-                            }
-                        };
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                        const data = await response.json();
-                        const aiText = data.data?.text || "Connection error.";
-                        setMessages(prev => [...prev, { role: 'model', text: aiText }]);
-                        speakResponse(aiText);
-                    } catch (error) {
-                        setStatus("ERROR");
-                    }
-                };
+                try {
+                    const payload = {
+                        data: {
+                            message: text,
+                            sessionID: "voice-session-satnam",
+                            history: updatedHistory.map(m => ({ role: m.role === 'model' ? 'ai' : 'user', text: m.text })),
+                            thinking_level: thinkingMode
+                        }
+                    };
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await response.json();
+                    const aiText = data.data?.text || "Connection error.";
+                    setMessages(prev => [...prev, { role: 'model', text: aiText }]);
+                    speakResponse(aiText);
+                } catch (error) {
+                    setStatus("ERROR");
+                }
+            };
 
-                const handleConnect = () => {
-                    if (!url.trim()) return;
-                    const cleanUrl = url.trim().replace(/\/$/, "");
-                    localStorage.setItem('jpm_ai_url', cleanUrl);
-                    setUrl(cleanUrl);
-                    setShowConfig(false);
-                };
+            const handleConnect = () => {
+                if (!url.trim()) return;
+                const cleanUrl = url.trim().replace(/\/$/, "");
+                localStorage.setItem('jpm_ai_url', cleanUrl);
+                setUrl(cleanUrl);
+                setShowConfig(false);
+            };
 
-                return (
-                    <div className="flex h-full w-full bg-slate-950 text-white overflow-hidden relative">
-                        {isComposerOpen && (
-                            <div className="absolute inset-0 z-50 bg-slate-900/90 backdrop-blur-lg flex flex-col p-4 md:p-8 animate-slide-in">
-                                <div className="max-w-4xl mx-auto w-full h-full flex flex-col">
-                                    <div className="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-jpm-accent text-slate-900 flex items-center justify-center font-bold shadow-[0_0_15px_rgba(197,157,95,0.4)]">
-                                                <i className={`fas ${reviewMode ? 'fa-check' : 'fa-pen'}`}></i>
-                                            </div>
-                                            <div>
-                                                <h2 className="text-xl font-bold font-quote text-white">{reviewMode ? 'Review Your Answer' : 'Compose Answer'}</h2>
-                                                <p className="text-[10px] text-gray-400 font-mono uppercase tracking-widest">{reviewMode ? 'Check before submitting' : 'Type or use voice'}</p>
-                                            </div>
+            return (
+                <div className="flex h-full w-full bg-slate-950 text-white overflow-hidden relative">
+                    {isComposerOpen && (
+                        <div className="absolute inset-0 z-50 bg-slate-900/90 backdrop-blur-lg flex flex-col p-4 md:p-8 animate-slide-in">
+                            <div className="max-w-4xl mx-auto w-full h-full flex flex-col">
+                                <div className="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-jpm-accent text-slate-900 flex items-center justify-center font-bold shadow-[0_0_15px_rgba(197,157,95,0.4)]">
+                                            <i className={`fas ${reviewMode ? 'fa-check' : 'fa-pen'}`}></i>
                                         </div>
-                                        <button onClick={handleCancel} className="p-2 text-gray-500 hover:text-white transition"><i className="fas fa-times text-xl"></i></button>
+                                        <div>
+                                            <h2 className="text-xl font-bold font-quote text-white">{reviewMode ? 'Review Your Answer' : 'Compose Answer'}</h2>
+                                            <p className="text-[10px] text-gray-400 font-mono uppercase tracking-widest">{reviewMode ? 'Check before submitting' : 'Type or use voice'}</p>
+                                        </div>
                                     </div>
-                                    <div className="flex-grow flex flex-col relative bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden shadow-inner">
-                                        {reviewMode ? (
-                                            <div className="p-6 h-full flex flex-col">
-                                                 <div className="flex-grow overflow-y-auto mb-4 p-4 bg-slate-900/50 rounded-xl border border-slate-800">
-                                                    <p className="text-gray-200 text-lg leading-relaxed font-sans whitespace-pre-wrap">{inputValue} {interimText}</p>
-                                                 </div>
-                                                 {inputAudioUrl && (
-                                                     <div className="flex items-center gap-4 p-4 bg-slate-800 rounded-xl border border-slate-700 mb-2">
-                                                         <div className="w-10 h-10 rounded-full bg-slate-700 text-jpm-accent flex items-center justify-center border border-slate-600"><i className="fas fa-play"></i></div>
-                                                         <div className="flex-grow">
-                                                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Your Voice Recording</p>
-                                                             <audio controls src={inputAudioUrl} className="w-full h-8"></audio>
-                                                         </div>
-                                                     </div>
-                                                 )}
+                                    <button onClick={handleCancel} className="p-2 text-gray-500 hover:text-white transition"><i className="fas fa-times text-xl"></i></button>
+                                </div>
+                                <div className="flex-grow flex flex-col relative bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden shadow-inner">
+                                    {reviewMode ? (
+                                        <div className="p-6 h-full flex flex-col">
+                                            <div className="flex-grow overflow-y-auto mb-4 p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+                                                <p className="text-gray-200 text-lg leading-relaxed font-sans whitespace-pre-wrap">{inputValue} {interimText}</p>
                                             </div>
-                                        ) : (
-                                            <div className="h-full flex flex-col">
-                                                <textarea 
-                                                    className="w-full h-full bg-transparent p-6 text-xl text-gray-200 placeholder-gray-600 focus:outline-none resize-none font-sans"
-                                                    placeholder="Type your answer here or click the microphone to speak..."
-                                                    value={inputValue + (isRecording ? interimText : "")}
-                                                    onChange={(e) => setInputValue(e.target.value)}
-                                                    readOnly={isRecording}
-                                                />
-                                                <div className="absolute bottom-6 right-6 flex items-center gap-4">
-                                                    {isRecording && (
-                                                        <div className="flex flex-col items-end gap-1 animate-slide-in"> 
-                                                            <div className="flex gap-1 h-6 items-end audio-wave"><span></span><span></span><span></span><span></span><span></span></div> 
-                                                            <span className={`text-[10px] font-bold px-2 py-1 rounded border ${getWpmColor(liveWpm)}`}>{liveWpm} WPM</span> 
-                                                        </div>
-                                                    )}
-                                                    <button onClick={toggleRecording} className={`p-4 rounded-full shadow-xl transition-all hover:scale-105 active:scale-95 border ${isRecording ? 'bg-red-600 text-white border-red-500 animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-slate-700 text-jpm-accent border-slate-600 hover:bg-slate-600'}`}>
-                                                        <i className={`fas ${isRecording ? 'fa-stop' : 'fa-microphone'} text-2xl`}></i>
-                                                    </button>
+                                            {inputAudioUrl && (
+                                                <div className="flex items-center gap-4 p-4 bg-slate-800 rounded-xl border border-slate-700 mb-2">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-700 text-jpm-accent flex items-center justify-center border border-slate-600"><i className="fas fa-play"></i></div>
+                                                    <div className="flex-grow">
+                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Your Voice Recording</p>
+                                                        <audio controls src={inputAudioUrl} className="w-full h-8"></audio>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="mt-6 flex gap-4">
-                                        {reviewMode ? (
-                                            <>
-                                                <button onClick={handleEdit} className="flex-1 py-4 bg-slate-800 text-white rounded-xl font-bold border border-slate-700 hover:bg-slate-700 transition">Edit</button>
-                                                <button onClick={handleSubmit} className="flex-[2] py-4 bg-jpm-accent text-slate-900 rounded-xl font-bold shadow-[0_0_20px_rgba(197,157,95,0.3)] hover:bg-[#b08d55] transition active:scale-95"><i className="fas fa-paper-plane mr-2"></i> Submit to AI</button>
-                                            </>
-                                        ) : (
-                                            <button onClick={handleDoneWriting} className="w-full py-4 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600 transition border border-slate-600">Done</button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* LEFT PANEL */}
-                        <div className="w-1/3 border-r border-slate-800 flex flex-col items-center justify-center p-6 bg-slate-900/50 relative">
-                            <div className="flex flex-col items-center mb-8">
-                                <div className={`px-3 py-1 rounded-full border text-[11px] font-bold font-mono transition-all duration-300 ${status === 'THINKING' ? 'bg-purple-900/30 border-purple-500 text-purple-400' : status === 'SPEAKING' ? 'bg-jpm-accent/20 border-jpm-accent text-jpm-accent' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
-                                    {status === 'IDLE' ? 'READY' : status}
-                                </div>
-                            </div>
-                            <div className={`relative w-48 h-48 rounded-full flex items-center justify-center transition-all duration-700 shadow-2xl ${status === 'SPEAKING' ? 'bg-jpm-accent/30 shadow-[0_0_60px_rgba(197,157,95,0.6)] animate-[orb-wobble_1.5s_infinite]' : status === 'THINKING' ? 'bg-purple-500/20 shadow-[0_0_60px_rgba(168,85,247,0.6)]' : 'bg-slate-800/40 shadow-inner'}`}>
-                                <div className="w-36 h-36 rounded-full border-2 border-white/10 flex items-center justify-center overflow-hidden bg-slate-950">
-                                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center relative bg-black/20">
-                                        <div className={`text-6xl select-none flex items-center justify-center w-full h-full transition-all duration-500 ${status === 'IDLE' ? 'animate-[ai-glow-idle_12s_linear_infinite]' : status === 'THINKING' ? 'animate-[brain-think_2.5s_infinite]' : 'filter drop-shadow-lg'}`}>
-                                            {status === 'SPEAKING' ? '🤖' : status === 'THINKING' ? '🧠' : '✨'}
+                                            )}
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="h-full flex flex-col">
+                                            <textarea
+                                                className="w-full h-full bg-transparent p-6 text-xl text-gray-200 placeholder-gray-600 focus:outline-none resize-none font-sans"
+                                                placeholder="Type your answer here or click the microphone to speak..."
+                                                value={inputValue + (isRecording ? interimText : "")}
+                                                onChange={(e) => setInputValue(e.target.value)}
+                                                readOnly={isRecording}
+                                            />
+                                            <div className="absolute bottom-6 right-6 flex items-center gap-4">
+                                                {isRecording && (
+                                                    <div className="flex flex-col items-end gap-1 animate-slide-in">
+                                                        <div className="flex gap-1 h-6 items-end audio-wave"><span></span><span></span><span></span><span></span><span></span></div>
+                                                        <span className={`text-[10px] font-bold px-2 py-1 rounded border ${getWpmColor(liveWpm)}`}>{liveWpm} WPM</span>
+                                                    </div>
+                                                )}
+                                                <button onClick={toggleRecording} className={`p-4 rounded-full shadow-xl transition-all hover:scale-105 active:scale-95 border ${isRecording ? 'bg-red-600 text-white border-red-500 animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-slate-700 text-jpm-accent border-slate-600 hover:bg-slate-600'}`}>
+                                                    <i className={`fas ${isRecording ? 'fa-stop' : 'fa-microphone'} text-2xl`}></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                {status === 'SPEAKING' && <div className="absolute inset-0 rounded-full border-2 border-jpm-accent/40 animate-ping pointer-events-none"></div>}
-                            </div>
-                            <div className="mt-6 flex flex-col gap-2 w-full px-4 relative z-10">
-                                {status === 'IDLE' ? (
-                                    <button onClick={openComposer} className="w-full bg-jpm-accent text-black font-bold py-4 rounded-xl hover:scale-105 transition shadow-lg shadow-jpm-accent/20 flex items-center justify-center gap-2"><i className="fas fa-pen-to-square"></i> REPLY / START</button>
-                                ) : (
-                                    <>
-                                        <button onClick={togglePause} className={`w-full border py-3 rounded-xl font-mono text-[10px] uppercase tracking-widest transition-all ${isPaused ? 'bg-amber-600/20 border-amber-500 text-white animate-pulse' : 'border-amber-900/50 text-amber-500 hover:bg-amber-900/10'}`}>
-                                            <i className={`fas ${isPaused ? 'fa-play' : 'fa-pause'} mr-2`}></i> {isPaused ? 'Resume Speech' : 'Pause Speech'}
-                                        </button>
-                                        <button onClick={stopEverything} className="w-full border border-red-900 text-red-500 font-mono text-[10px] py-3 rounded-xl hover:bg-red-900/10 transition uppercase tracking-widest">End Session</button>
-                                    </>
-                                )}
-                                <button onClick={() => setShowConfig(!showConfig)} className="text-[10px] text-slate-500 hover:text-jpm-accent transition-colors font-mono mt-2 self-center"><i className="fas fa-cog mr-2"></i>Neural Link</button>
-                            </div>
-                            <div className="bg-slate-800/40 p-5 rounded-3xl border border-slate-700 shadow-inner w-full space-y-5 mt-4 relative z-10">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest block text-left">Panel Region</label>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setRegion('en-GB')} className={`flex-1 text-[10px] py-2 rounded-lg font-mono border transition-all ${region === 'en-GB' ? 'bg-jpm-accent text-black border-jpm-accent shadow-lg' : 'bg-slate-700 text-gray-400 border-slate-600 opacity-60'}`}>UK</button>
-                                        <button onClick={() => setRegion('en-US')} className={`flex-1 text-[10px] py-2 rounded-lg font-mono border transition-all ${region === 'en-US' ? 'bg-jpm-accent text-black border-jpm-accent shadow-lg' : 'bg-slate-700 text-gray-400 border-slate-600 opacity-60'}`}>US</button>
-                                    </div>
-                                </div>
-                                <div className="flex justify-between items-center pt-2">
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest">Voice</label>
-                                    <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
-                                        <button onClick={() => setGender('male')} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${gender === 'male' ? 'bg-jpm-accent text-black shadow-md' : 'text-gray-500'}`}>M</button>
-                                        <button onClick={() => setGender('female')} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${gender === 'female' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-500'}`}>F</button>
-                                    </div>
-                                </div>
-                                <div className="flex justify-between items-center pt-2">
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest">Speed</label>
-                                    <button onClick={cycleSpeed} className="px-4 py-1.5 rounded-lg text-[10px] font-bold bg-slate-700 text-jpm-accent border border-slate-600 hover:bg-slate-600 transition shadow-sm w-24">{speed.toFixed(1)}x</button>
+                                <div className="mt-6 flex gap-4">
+                                    {reviewMode ? (
+                                        <>
+                                            <button onClick={handleEdit} className="flex-1 py-4 bg-slate-800 text-white rounded-xl font-bold border border-slate-700 hover:bg-slate-700 transition">Edit</button>
+                                            <button onClick={handleSubmit} className="flex-[2] py-4 bg-jpm-accent text-slate-900 rounded-xl font-bold shadow-[0_0_20px_rgba(197,157,95,0.3)] hover:bg-[#b08d55] transition active:scale-95"><i className="fas fa-paper-plane mr-2"></i> Submit to AI</button>
+                                        </>
+                                    ) : (
+                                        <button onClick={handleDoneWriting} className="w-full py-4 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600 transition border border-slate-600">Done</button>
+                                    )}
                                 </div>
                             </div>
-                            {showConfig && (
-                                <div className="absolute bottom-10 left-6 right-6 z-50 bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-2xl animate-slide-in">
-                                    <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Function URL" className="bg-black/50 border border-slate-600 rounded p-2 text-white w-full text-[10px] font-mono mb-2" />
-                                    <button onClick={handleConnect} className="w-full bg-jpm-accent text-black font-bold text-[10px] py-2 rounded">SYNC</button>
+                        </div>
+                    )}
+
+                    {/* LEFT PANEL */}
+                    <div className="w-1/3 border-r border-slate-800 flex flex-col items-center justify-center p-6 bg-slate-900/50 relative">
+                        <div className="flex flex-col items-center mb-8">
+                            <div className={`px-3 py-1 rounded-full border text-[11px] font-bold font-mono transition-all duration-300 ${status === 'THINKING' ? 'bg-purple-900/30 border-purple-500 text-purple-400' : status === 'SPEAKING' ? 'bg-jpm-accent/20 border-jpm-accent text-jpm-accent' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
+                                {status === 'IDLE' ? 'READY' : status}
+                            </div>
+                        </div>
+                        <div className={`relative w-48 h-48 rounded-full flex items-center justify-center transition-all duration-700 shadow-2xl ${status === 'SPEAKING' ? 'bg-jpm-accent/30 shadow-[0_0_60px_rgba(197,157,95,0.6)] animate-[orb-wobble_1.5s_infinite]' : status === 'THINKING' ? 'bg-purple-500/20 shadow-[0_0_60px_rgba(168,85,247,0.6)]' : 'bg-slate-800/40 shadow-inner'}`}>
+                            <div className="w-36 h-36 rounded-full border-2 border-white/10 flex items-center justify-center overflow-hidden bg-slate-950">
+                                <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center relative bg-black/20">
+                                    <div className={`text-6xl select-none flex items-center justify-center w-full h-full transition-all duration-500 ${status === 'IDLE' ? 'animate-[ai-glow-idle_12s_linear_infinite]' : status === 'THINKING' ? 'animate-[brain-think_2.5s_infinite]' : 'filter drop-shadow-lg'}`}>
+                                        {status === 'SPEAKING' ? '🤖' : status === 'THINKING' ? '🧠' : '✨'}
+                                    </div>
                                 </div>
+                            </div>
+                            {status === 'SPEAKING' && <div className="absolute inset-0 rounded-full border-2 border-jpm-accent/40 animate-ping pointer-events-none"></div>}
+                        </div>
+                        <div className="mt-6 flex flex-col gap-2 w-full px-4 relative z-10">
+                            {status === 'IDLE' ? (
+                                <button onClick={openComposer} className="w-full bg-jpm-accent text-black font-bold py-4 rounded-xl hover:scale-105 transition shadow-lg shadow-jpm-accent/20 flex items-center justify-center gap-2"><i className="fas fa-pen-to-square"></i> REPLY / START</button>
+                            ) : (
+                                <>
+                                    <button onClick={togglePause} className={`w-full border py-3 rounded-xl font-mono text-[10px] uppercase tracking-widest transition-all ${isPaused ? 'bg-amber-600/20 border-amber-500 text-white animate-pulse' : 'border-amber-900/50 text-amber-500 hover:bg-amber-900/10'}`}>
+                                        <i className={`fas ${isPaused ? 'fa-play' : 'fa-pause'} mr-2`}></i> {isPaused ? 'Resume Speech' : 'Pause Speech'}
+                                    </button>
+                                    <button onClick={stopEverything} className="w-full border border-red-900 text-red-500 font-mono text-[10px] py-3 rounded-xl hover:bg-red-900/10 transition uppercase tracking-widest">End Session</button>
+                                </>
                             )}
+                            <button onClick={() => setShowConfig(!showConfig)} className="text-[10px] text-slate-500 hover:text-jpm-accent transition-colors font-mono mt-2 self-center"><i className="fas fa-cog mr-2"></i>Neural Link</button>
                         </div>
-
-                        {/* RIGHT PANEL: TRANSCRIPT (With Auto-Scroll & Dual Buttons) */}
-                        <div ref={chatScrollRef} className="w-2/3 flex flex-col p-8 overflow-y-auto scroll-touch relative bg-black/20 pb-24">
-                            <div className="space-y-6">
-                                {messages.length === 0 && (
-                                    <div className="h-64 flex flex-col items-center justify-center text-slate-700 text-center">
-                                        <i className="fas fa-comments text-4xl mb-4 opacity-20"></i>
-                                        <p className="font-quote italic text-xl">The panel is ready. Click 'Reply / Start' to begin.</p>
-                                    </div>
-                                )}
-                                {messages.map((msg, i) => (
-                                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in`}>
-                                        <div className={`max-w-[85%] p-5 rounded-2xl leading-relaxed text-base border shadow-xl ${msg.role === 'user' ? 'bg-slate-800 border-slate-700 text-gray-200' : 'bg-slate-900 border-jpm-accent/20 text-white'}`}>
-                                            <div className="flex justify-between items-center mb-2 gap-4">
-                                                <span className="text-[10px] font-bold uppercase tracking-widest opacity-50 font-mono">{msg.role === 'user' ? 'Satnam Singh' : 'J.P. Morgan Panel'}</span>
-                                                <span className="text-[9px] font-mono opacity-30">{new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
-                                            </div>
-                                            {msg.text}
-                                        </div>
-                                    </div>
-                                ))}
-                                {status === 'THINKING' && (
-                                    <div className="flex justify-start animate-pulse">
-                                        <div className="bg-slate-900 p-4 rounded-xl text-jpm-accent font-mono text-xs border border-jpm-accent/10">Panel is analyzing...</div>
-                                    </div>
-                                )}
+                        <div className="bg-slate-800/40 p-5 rounded-3xl border border-slate-700 shadow-inner w-full space-y-5 mt-4 relative z-10">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest block text-left">Panel Region</label>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setRegion('en-GB')} className={`flex-1 text-[10px] py-2 rounded-lg font-mono border transition-all ${region === 'en-GB' ? 'bg-jpm-accent text-black border-jpm-accent shadow-lg' : 'bg-slate-700 text-gray-400 border-slate-600 opacity-60'}`}>UK</button>
+                                    <button onClick={() => setRegion('en-US')} className={`flex-1 text-[10px] py-2 rounded-lg font-mono border transition-all ${region === 'en-US' ? 'bg-jpm-accent text-black border-jpm-accent shadow-lg' : 'bg-slate-700 text-gray-400 border-slate-600 opacity-60'}`}>US</button>
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-center pt-2">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest">Voice</label>
+                                <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                                    <button onClick={() => setGender('male')} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${gender === 'male' ? 'bg-jpm-accent text-black shadow-md' : 'text-gray-500'}`}>M</button>
+                                    <button onClick={() => setGender('female')} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${gender === 'female' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-500'}`}>F</button>
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-center pt-2">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase font-mono tracking-widest">Speed</label>
+                                <button onClick={cycleSpeed} className="px-4 py-1.5 rounded-lg text-[10px] font-bold bg-slate-700 text-jpm-accent border border-slate-600 hover:bg-slate-600 transition shadow-sm w-24">{speed.toFixed(1)}x</button>
                             </div>
                         </div>
-
-                        {/* SCROLL CONTROLS (Floating) */}
-                        {messages.length > 3 && (
-                            <div className="absolute bottom-6 right-6 z-20 flex flex-col gap-2">
-                                <button 
-                                    onClick={() => chatScrollRef.current && chatScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' })}
-                                    className="w-10 h-10 bg-slate-800 text-gray-400 rounded-full shadow-lg border border-slate-700 hover:bg-slate-700 hover:text-white transition-all active:scale-95 flex items-center justify-center hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]"
-                                    title="Scroll to Top"
-                                >
-                                    <i className="fas fa-arrow-up"></i>
-                                </button>
-                                <button 
-                                    onClick={() => chatScrollRef.current && chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' })}
-                                    className="w-10 h-10 bg-slate-800 text-jpm-accent rounded-full shadow-lg border border-slate-700 hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center hover:shadow-[0_0_15px_rgba(197,157,95,0.3)]"
-                                    title="Scroll to Bottom"
-                                >
-                                    <i className="fas fa-arrow-down"></i>
-                                </button>
+                        {showConfig && (
+                            <div className="absolute bottom-10 left-6 right-6 z-50 bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-2xl animate-slide-in">
+                                <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Function URL" className="bg-black/50 border border-slate-600 rounded p-2 text-white w-full text-[10px] font-mono mb-2" />
+                                <button onClick={handleConnect} className="w-full bg-jpm-accent text-black font-bold text-[10px] py-2 rounded">SYNC</button>
                             </div>
                         )}
                     </div>
-                );
-            };
+
+                    {/* RIGHT PANEL: TRANSCRIPT (With Auto-Scroll & Dual Buttons) */}
+                    <div ref={chatScrollRef} className="w-2/3 flex flex-col p-8 overflow-y-auto scroll-touch relative bg-black/20 pb-24">
+                        <div className="space-y-6">
+                            {messages.length === 0 && (
+                                <div className="h-64 flex flex-col items-center justify-center text-slate-700 text-center">
+                                    <i className="fas fa-comments text-4xl mb-4 opacity-20"></i>
+                                    <p className="font-quote italic text-xl">The panel is ready. Click 'Reply / Start' to begin.</p>
+                                </div>
+                            )}
+                            {messages.map((msg, i) => (
+                                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in`}>
+                                    <div className={`max-w-[85%] p-5 rounded-2xl leading-relaxed text-base border shadow-xl ${msg.role === 'user' ? 'bg-slate-800 border-slate-700 text-gray-200' : 'bg-slate-900 border-jpm-accent/20 text-white'}`}>
+                                        <div className="flex justify-between items-center mb-2 gap-4">
+                                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-50 font-mono">{msg.role === 'user' ? 'Satnam Singh' : 'J.P. Morgan Panel'}</span>
+                                            <span className="text-[9px] font-mono opacity-30">{new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                        {msg.text}
+                                    </div>
+                                </div>
+                            ))}
+                            {status === 'THINKING' && (
+                                <div className="flex justify-start animate-pulse">
+                                    <div className="bg-slate-900 p-4 rounded-xl text-jpm-accent font-mono text-xs border border-jpm-accent/10">Panel is analyzing...</div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* SCROLL CONTROLS (Floating) */}
+                    {messages.length > 3 && (
+                        <div className="absolute bottom-6 right-6 z-20 flex flex-col gap-2">
+                            <button
+                                onClick={() => chatScrollRef.current && chatScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' })}
+                                className="w-10 h-10 bg-slate-800 text-gray-400 rounded-full shadow-lg border border-slate-700 hover:bg-slate-700 hover:text-white transition-all active:scale-95 flex items-center justify-center hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+                                title="Scroll to Top"
+                            >
+                                <i className="fas fa-arrow-up"></i>
+                            </button>
+                            <button
+                                onClick={() => chatScrollRef.current && chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' })}
+                                className="w-10 h-10 bg-slate-800 text-jpm-accent rounded-full shadow-lg border border-slate-700 hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center hover:shadow-[0_0_15px_rgba(197,157,95,0.3)]"
+                                title="Scroll to Bottom"
+                            >
+                                <i className="fas fa-arrow-down"></i>
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
 
         //END AI MODE
 
@@ -1528,7 +1567,7 @@
             useEffect(() => {
                 const fetchGlobalProgress = async () => {
                     const aiUrl = localStorage.getItem('jpm_ai_url');
-                    
+
                     // 1. Always load Local Data first (Fastest User Experience)
                     const savedLocal = localStorage.getItem('jpm_prep_progress_v20');
                     if (savedLocal) {
@@ -1555,7 +1594,7 @@
                             body: JSON.stringify({ data: { action: "fetch", userID: "satnam_default" } }) // Changed action to 'fetch' for full payload
                         });
                         const result = await res.json();
-                        
+
                         if (result.data?.payload) {
                             const { progress: cloudP, customProjects: cloudCP, stats: cloudStats, _settings: cloudSettings } = result.data.payload;
 
@@ -1569,7 +1608,7 @@
                             if (cloudP) {
                                 setProgress(prevLocal => {
                                     const merged = { ...prevLocal }; // Start with what we have locally
-                                    
+
                                     Object.keys(cloudP).forEach(key => {
                                         const localItem = merged[key];
                                         const cloudItem = cloudP[key];
@@ -1593,7 +1632,7 @@
                                             }
                                         }
                                     });
-                                    
+
                                     // Persist the NEW merged state to local storage immediately
                                     localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(merged));
                                     return merged;
@@ -1604,8 +1643,8 @@
                             if (cloudCP) setCustomProjects(cloudCP);
                             if (cloudSettings) setPressureMode(cloudSettings.pressureMode || false);
                         }
-                    } catch (e) { 
-                        console.warn("Cloud pull failed, relying on local data.", e); 
+                    } catch (e) {
+                        console.warn("Cloud pull failed, relying on local data.", e);
                     }
                 };
 
@@ -1613,17 +1652,17 @@
             }, []);
 
             // 4. REQUIREMENT 14: CLOUD SYNC LOGIC (FIXED: NOW SYNCS PROGRESS & PROJECTS)
-            
+
             // DEBOUNCED PUSH: Sync ALL data (Stats + Progress) to Cloud
             useEffect(() => {
                 const syncToCloud = async () => {
                     const aiUrl = localStorage.getItem('jpm_ai_url');
-                    
+
                     // Don't sync if no URL or if we haven't loaded data yet
                     if (!aiUrl || Object.keys(progress).length === 0) return;
 
                     setSyncStatus('syncing'); // Fixed: Was setIsSyncing (undefined)
-                    
+
                     try {
                         // Create a unified payload that matches what 'fetch' expects to read
                         const payload = {
@@ -1636,27 +1675,27 @@
                         await fetch(aiUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                data: { 
+                            body: JSON.stringify({
+                                data: {
                                     action: "sync", // Changed from "syncStats" to generic "sync"
-                                    userID: "satnam_default", 
+                                    userID: "satnam_default",
                                     payload: payload // Sending the Full State
-                                } 
+                                }
                             })
                         });
-                        
+
                         setSyncStatus('synced');
                         console.log("Cloud Sync Successful");
-                    } catch (e) { 
+                    } catch (e) {
                         console.warn("Sync failed", e);
-                        setSyncStatus('error'); 
+                        setSyncStatus('error');
                     }
                 };
 
                 // Debounce 3s (Wait for typing/interaction to finish before syncing)
                 const timer = setTimeout(syncToCloud, 3000);
                 return () => clearTimeout(timer);
-                
+
             }, [stats, progress, customProjects, pressureMode]); // Dependency: Trigger sync when ANY of these change
 
             const quote = useMemo(() => {
@@ -1914,17 +1953,17 @@
                 if (status === 'Completed') {
                     if (score >= 80) {
                         leitnerLevel = Math.min(leitnerLevel + 1, 4);
-                        
+
                         // DYNAMIC CONFIGURATION
-                        const days = leitnerLevel === 1 ? leitnerConfig.l1 : 
-                                     leitnerLevel === 2 ? leitnerConfig.l2 : 
-                                     leitnerLevel === 3 ? leitnerConfig.l3 : leitnerConfig.l4;
-                                     
+                        const days = leitnerLevel === 1 ? leitnerConfig.l1 :
+                            leitnerLevel === 2 ? leitnerConfig.l2 :
+                                leitnerLevel === 3 ? leitnerConfig.l3 : leitnerConfig.l4;
+
                         nextReview = Date.now() + (days * 24 * 60 * 60 * 1000);
                     } else if (score < 50) {
                         leitnerLevel = 0;
                         // Failure Penalty: 50% of Level 1 time
-                        nextReview = Date.now() + ((leitnerConfig.l1 * 0.5) * 24 * 60 * 60 * 1000); 
+                        nextReview = Date.now() + ((leitnerConfig.l1 * 0.5) * 24 * 60 * 60 * 1000);
                     } else {
                         // Mediocre: Wait Level 1 time
                         nextReview = Date.now() + (leitnerConfig.l1 * 24 * 60 * 60 * 1000);
@@ -1932,13 +1971,13 @@
                 }
 
                 // SAVE CONFIG WITH PROGRESS
-                const newP = { 
-                    ...progress, 
+                const newP = {
+                    ...progress,
                     [`${m}-${d}`]: { status, score, date: new Date().toLocaleString(), queue, nextReview, leitnerLevel },
                     _settings: { pressureMode, leitnerConfig } // Persist Config
                 };
-                
-                setProgress(newP); 
+
+                setProgress(newP);
                 localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(newP));
             };
             const markStudyComplete = (mId, deckName) => { saveProgress(mId, deckName, 'Completed', 100); };
@@ -1956,7 +1995,7 @@
             // FIX: Premium Tiles (Uniform Navy Background, Icon Color Accent, Gold Hover)
             const RenderDeckList = ({ items, mId }) => {
                 const decks = getDecks(items);
-                
+
                 /* FIX: SPACE REPETITION VISIBILITY 
                    - Removed the filter that hides 'Completed' decks. 
                    - Now SHOWS everything but sorts them by priority: 
@@ -1968,12 +2007,12 @@
                 const progressItems = decks.map(d => {
                     const p = progress[`${mId}-${d}`];
                     if (!p) return null;
-                    
+
                     const isDone = p.status === 'Completed';
                     const isReviewDue = isDone && p.nextReview && p.nextReview < Date.now();
-                    
+
                     // Priority Score for Sorting
-                    let priority = 3; 
+                    let priority = 3;
                     if (isReviewDue) priority = 1;      // Highest (Show First)
                     else if (!isDone) priority = 2;     // Middle
                     else priority = 3;                  // Lowest (Show Last)
@@ -1986,26 +2025,26 @@
 
                 const newDecks = decks.filter(d => !progress[`${mId}-${d}`]);
                 const isLinkMode = mId === 'study' || mId === 'skill';
-                
+
                 // Determine icon color based on mode
                 let iconColor = 'text-jpm-accent'; // Unified Gold
 
                 return (<div className="h-48 overflow-y-auto bg-slate-900/50 p-4 border-t border-slate-800">
                     {progressItems.length > 0 && <h4 className="text-xs font-bold text-gray-500 uppercase mb-2 font-mono">My Progress</h4>}
-                    
+
                     {progressItems.map(({ deck, p, isDone, isReviewDue }) => (
                         <div key={deck} className={`w-full text-left p-2 mb-2 border rounded-xl flex justify-between items-center transition-transform active:scale-95 hover:shadow-[0_0_15px_rgba(197,157,95,0.2)] ${isReviewDue ? 'bg-slate-800 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : isDone ? 'bg-green-900/10 border-green-800 opacity-70 hover:opacity-100' : 'bg-slate-800 border-jpm-accent/30'}`}>
                             <button onClick={() => handleDeckClick(mId, deck)} className="font-semibold text-sm text-gray-200 flex-grow text-left hover:underline flex items-center gap-2">
                                 {isReviewDue && <i className="fas fa-exclamation-circle text-red-500 animate-pulse"></i>}
                                 {deck}
                             </button>
-                            
+
                             {isLinkMode && !isDone && <button onClick={() => markStudyComplete(mId, deck)} className="bg-jpm-accent text-slate-900 font-bold text-[10px] px-2 py-1 rounded hover:bg-yellow-600 ml-2">Mark Done</button>}
-                            
+
                             {isDone ? (
-                                isReviewDue ? 
-                                <span className="text-[9px] font-bold text-red-400 bg-red-900/20 px-2 py-1 rounded border border-red-900">REVIEW NOW</span> : 
-                                <div className="flex items-center text-green-500 text-[9px] font-bold uppercase tracking-wider"><i className="fas fa-check-circle mr-1"></i> DONE</div>
+                                isReviewDue ?
+                                    <span className="text-[9px] font-bold text-red-400 bg-red-900/20 px-2 py-1 rounded border border-red-900">REVIEW NOW</span> :
+                                    <div className="flex items-center text-green-500 text-[9px] font-bold uppercase tracking-wider"><i className="fas fa-check-circle mr-1"></i> DONE</div>
                             ) : (
                                 !isLinkMode && <div className="flex items-center text-jpm-accent text-[9px] font-bold ml-2 bg-yellow-900/20 px-2 py-1 rounded border border-yellow-900/50"><i className="fas fa-play mr-1"></i> {p.score || 0}%</div>
                             )}
@@ -2103,7 +2142,7 @@
                                     <div className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                                         <div className="bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-slide-in border border-slate-700 max-h-[90vh] overflow-y-auto">
                                             <h3 className="text-2xl font-bold mb-4 dark:text-white text-jpm-primary font-quote"><i className="fas fa-cog mr-2 text-jpm-accent"></i>Settings</h3>
-                                            
+
                                             <div className="space-y-4">
                                                 {/* DATA CONTROLS */}
                                                 <div className="bg-slate-800 p-3 rounded-xl border border-slate-700">
@@ -2119,8 +2158,8 @@
                                                         {[1, 2, 3, 4].map(lvl => (
                                                             <div key={lvl} className="flex flex-col">
                                                                 <label className="text-[10px] text-gray-500 font-bold mb-1">Level {lvl}</label>
-                                                                <input 
-                                                                    type="number" 
+                                                                <input
+                                                                    type="number"
                                                                     value={leitnerConfig[`l${lvl}`] * 24} // Show as Hours
                                                                     onChange={(e) => {
                                                                         const hours = parseFloat(e.target.value) || 0;
