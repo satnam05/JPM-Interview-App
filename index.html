@@ -488,163 +488,163 @@
 
         // 2. Complex Visualizations
         // --- JPM GLOBAL PAYMENTS COMMAND CENTER (RENAMED TO MATCH APP) ---
-            const TechInsightsModal = ({ onBack }) => {
-                // 1. Safe State Initialization
-                const [tick, setTick] = useState(0);
-                const [logs, setLogs] = useState([]);
-                const [metrics, setMetrics] = useState({
-                    tps: 1450,
-                    stpRate: 98.2,
-                    kafkaLag: 12,
-                    liquidity: 42.5,
-                    failed: 0
-                });
+        const TechInsightsModal = ({ onBack }) => {
+            // 1. Safe State Initialization
+            const [tick, setTick] = useState(0);
+            const [logs, setLogs] = useState([]);
+            const [metrics, setMetrics] = useState({
+                tps: 1450,
+                stpRate: 98.2,
+                kafkaLag: 12,
+                liquidity: 42.5,
+                failed: 0
+            });
 
-                // 2. Simulation Loop (Wrapped in Try-Catch for safety)
-                useEffect(() => {
-                    const interval = setInterval(() => {
-                        try {
-                            setTick(t => t + 1);
-                            
-                            // Randomize Metrics
-                            setMetrics(prev => ({
-                                tps: Math.floor(1400 + Math.random() * 300),
-                                stpRate: (98.0 + Math.random() * 1.5).toFixed(1),
-                                kafkaLag: Math.floor(10 + Math.random() * 15),
-                                liquidity: (42 + Math.random()).toFixed(2),
-                                failed: prev.failed + (Math.random() > 0.8 ? 1 : 0)
-                            }));
+            // 2. Simulation Loop (Wrapped in Try-Catch for safety)
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    try {
+                        setTick(t => t + 1);
 
-                            // Generate Logs
-                            const types = ['pacs.008', 'pain.001', 'camt.053', 'pacs.002'];
-                            const regions = ['EMEA', 'NAMR', 'APAC', 'LATAM'];
-                            const statuses = ['ACK', 'ACK', 'ACK', 'NACK', 'HELD'];
-                            
-                            const newLog = {
-                                id: Date.now() + Math.random(), // Unique ID
-                                time: new Date().toLocaleTimeString(),
-                                type: types[Math.floor(Math.random() * types.length)],
-                                region: regions[Math.floor(Math.random() * regions.length)],
-                                status: statuses[Math.floor(Math.random() * statuses.length)],
-                                latency: Math.floor(Math.random() * 150) + 'ms'
-                            };
+                        // Randomize Metrics
+                        setMetrics(prev => ({
+                            tps: Math.floor(1400 + Math.random() * 300),
+                            stpRate: (98.0 + Math.random() * 1.5).toFixed(1),
+                            kafkaLag: Math.floor(10 + Math.random() * 15),
+                            liquidity: (42 + Math.random()).toFixed(2),
+                            failed: prev.failed + (Math.random() > 0.8 ? 1 : 0)
+                        }));
 
-                            setLogs(prev => [newLog, ...prev].slice(0, 7)); 
-                        } catch (e) {
-                            console.error("Simulation Error:", e);
-                        }
-                    }, 1500);
-                    return () => clearInterval(interval);
-                }, []);
+                        // Generate Logs
+                        const types = ['pacs.008', 'pain.001', 'camt.053', 'pacs.002'];
+                        const regions = ['EMEA', 'NAMR', 'APAC', 'LATAM'];
+                        const statuses = ['ACK', 'ACK', 'ACK', 'NACK', 'HELD'];
 
-                // 3. Render Safety Check
-                if (!metrics) return <div className="text-white p-10">Initializing Command Center...</div>;
+                        const newLog = {
+                            id: Date.now() + Math.random(), // Unique ID
+                            time: new Date().toLocaleTimeString(),
+                            type: types[Math.floor(Math.random() * types.length)],
+                            region: regions[Math.floor(Math.random() * regions.length)],
+                            status: statuses[Math.floor(Math.random() * statuses.length)],
+                            latency: Math.floor(Math.random() * 150) + 'ms'
+                        };
 
-                return (
-                    <div className="fixed inset-0 z-50 bg-slate-950 text-white overflow-hidden font-sans flex flex-col animate-fade-in">
-                        {/* HEADER */}
-                        <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900">
-                            <div>
-                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                    <i className="fas fa-network-wired text-yellow-500"></i> 
-                                    Payments Command Center
-                                </h2>
-                                <p className="text-[10px] text-gray-400 font-mono tracking-widest mt-1">
-                                    DATA MESH NODE: PAYMENTS-CORE-V2
-                                </p>
+                        setLogs(prev => [newLog, ...prev].slice(0, 7));
+                    } catch (e) {
+                        console.error("Simulation Error:", e);
+                    }
+                }, 1500);
+                return () => clearInterval(interval);
+            }, []);
+
+            // 3. Render Safety Check
+            if (!metrics) return <div className="text-white p-10">Initializing Command Center...</div>;
+
+            return (
+                <div className="fixed inset-0 z-50 bg-slate-950 text-white overflow-hidden font-sans flex flex-col animate-fade-in">
+                    {/* HEADER */}
+                    <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900">
+                        <div>
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                <i className="fas fa-network-wired text-yellow-500"></i>
+                                Payments Command Center
+                            </h2>
+                            <p className="text-[10px] text-gray-400 font-mono tracking-widest mt-1">
+                                DATA MESH NODE: PAYMENTS-CORE-V2
+                            </p>
+                        </div>
+                        <button onClick={onBack} className="px-4 py-2 rounded border border-slate-700 hover:bg-slate-800 text-xs font-bold text-gray-300">
+                            EXIT
+                        </button>
+                    </div>
+
+                    {/* MAIN GRID */}
+                    <div className="flex-grow p-4 overflow-y-auto grid grid-cols-1 md:grid-cols-4 gap-4">
+
+                        {/* KPI CARDS */}
+                        <div className="md:col-span-1 space-y-4">
+                            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                                <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-1">Ingestion (TPS)</h3>
+                                <div className="text-3xl font-mono font-bold text-white">{metrics.tps}</div>
                             </div>
-                            <button onClick={onBack} className="px-4 py-2 rounded border border-slate-700 hover:bg-slate-800 text-xs font-bold text-gray-300">
-                                EXIT
-                            </button>
+
+                            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                                <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-1">STP Rate %</h3>
+                                <div className={`text-3xl font-mono font-bold ${metrics.stpRate > 98 ? 'text-green-400' : 'text-yellow-400'}`}>{metrics.stpRate}%</div>
+                                <div className="w-full bg-slate-800 h-1 mt-2 rounded-full">
+                                    <div className="h-full bg-green-500" style={{ width: `${metrics.stpRate}%` }}></div>
+                                </div>
+                            </div>
+
+                            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                                <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-1">Liquidity ($Bn)</h3>
+                                <div className="text-2xl font-mono font-bold text-blue-300">${metrics.liquidity}</div>
+                            </div>
                         </div>
 
-                        {/* MAIN GRID */}
-                        <div className="flex-grow p-4 overflow-y-auto grid grid-cols-1 md:grid-cols-4 gap-4">
-                            
-                            {/* KPI CARDS */}
-                            <div className="md:col-span-1 space-y-4">
-                                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                                    <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-1">Ingestion (TPS)</h3>
-                                    <div className="text-3xl font-mono font-bold text-white">{metrics.tps}</div>
-                                </div>
-
-                                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                                    <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-1">STP Rate %</h3>
-                                    <div className={`text-3xl font-mono font-bold ${metrics.stpRate > 98 ? 'text-green-400' : 'text-yellow-400'}`}>{metrics.stpRate}%</div>
-                                    <div className="w-full bg-slate-800 h-1 mt-2 rounded-full">
-                                        <div className="h-full bg-green-500" style={{ width: `${metrics.stpRate}%` }}></div>
+                        {/* PIPELINE VISUALIZATION */}
+                        <div className="md:col-span-2 flex flex-col gap-4">
+                            <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 flex-grow flex flex-col justify-center">
+                                <div className="flex items-center justify-between px-2">
+                                    <div className="text-center">
+                                        <div className="w-12 h-12 mx-auto rounded-full bg-slate-800 border-2 border-blue-500 flex items-center justify-center text-blue-400 mb-2"><i className="fas fa-satellite-dish"></i></div>
+                                        <span className="text-[10px] font-bold uppercase">Gateway</span>
                                     </div>
-                                </div>
-
-                                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                                    <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-1">Liquidity ($Bn)</h3>
-                                    <div className="text-2xl font-mono font-bold text-blue-300">${metrics.liquidity}</div>
-                                </div>
-                            </div>
-
-                            {/* PIPELINE VISUALIZATION */}
-                            <div className="md:col-span-2 flex flex-col gap-4">
-                                <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 flex-grow flex flex-col justify-center">
-                                    <div className="flex items-center justify-between px-2">
-                                        <div className="text-center">
-                                            <div className="w-12 h-12 mx-auto rounded-full bg-slate-800 border-2 border-blue-500 flex items-center justify-center text-blue-400 mb-2"><i className="fas fa-satellite-dish"></i></div>
-                                            <span className="text-[10px] font-bold uppercase">Gateway</span>
+                                    <div className="flex-grow h-0.5 bg-slate-700 mx-2"></div>
+                                    <div className="text-center">
+                                        <div className="w-12 h-12 mx-auto rounded-lg bg-slate-800 border border-orange-500 flex flex-col items-center justify-center text-white mb-2">
+                                            <i className="fas fa-layer-group mb-1"></i>
+                                            <span className="text-[8px] text-orange-400">{metrics.kafkaLag}ms</span>
                                         </div>
-                                        <div className="flex-grow h-0.5 bg-slate-700 mx-2"></div>
-                                        <div className="text-center">
-                                            <div className="w-12 h-12 mx-auto rounded-lg bg-slate-800 border border-orange-500 flex flex-col items-center justify-center text-white mb-2">
-                                                <i className="fas fa-layer-group mb-1"></i>
-                                                <span className="text-[8px] text-orange-400">{metrics.kafkaLag}ms</span>
-                                            </div>
-                                            <span className="text-[10px] font-bold uppercase">Kafka</span>
-                                        </div>
-                                        <div className="flex-grow h-0.5 bg-slate-700 mx-2"></div>
-                                        <div className="text-center">
-                                            <div className="w-12 h-12 mx-auto rounded-full bg-slate-800 border-2 border-purple-500 flex items-center justify-center text-purple-400 mb-2"><i className="fas fa-cogs"></i></div>
-                                            <span className="text-[10px] font-bold uppercase">Spark</span>
-                                        </div>
-                                        <div className="flex-grow h-0.5 bg-slate-700 mx-2"></div>
-                                        <div className="text-center">
-                                            <div className="w-12 h-12 mx-auto rounded-lg bg-slate-800 border border-green-700 flex items-center justify-center text-green-500 mb-2"><i className="fas fa-database"></i></div>
-                                            <span className="text-[10px] font-bold uppercase">Lake</span>
-                                        </div>
+                                        <span className="text-[10px] font-bold uppercase">Kafka</span>
                                     </div>
-                                </div>
-
-                                {/* LIVE LOGS */}
-                                <div className="bg-black/30 rounded-xl border border-slate-800 p-4 h-48 overflow-hidden flex flex-col font-mono text-[10px]">
-                                    <div className="flex justify-between border-b border-slate-800 pb-2 mb-2">
-                                        <span className="text-gray-400">LIVE ISO 20022 TRACE</span>
-                                        <span className="text-green-500 animate-pulse">● RECIEVING</span>
+                                    <div className="flex-grow h-0.5 bg-slate-700 mx-2"></div>
+                                    <div className="text-center">
+                                        <div className="w-12 h-12 mx-auto rounded-full bg-slate-800 border-2 border-purple-500 flex items-center justify-center text-purple-400 mb-2"><i className="fas fa-cogs"></i></div>
+                                        <span className="text-[10px] font-bold uppercase">Spark</span>
                                     </div>
-                                    <div className="space-y-1 overflow-y-auto">
-                                        {logs.map((log) => (
-                                            <div key={log.id} className="grid grid-cols-12 gap-2">
-                                                <span className="col-span-2 text-gray-600">{log.time}</span>
-                                                <span className="col-span-2 text-blue-300">{log.type}</span>
-                                                <span className="col-span-2 text-white">{log.region}</span>
-                                                <span className={`col-span-4 font-bold ${log.status.includes('NACK') || log.status.includes('HELD') ? 'text-red-500' : 'text-green-500'}`}>{log.status}</span>
-                                                <span className="col-span-2 text-right text-gray-600">{log.latency}</span>
-                                            </div>
-                                        ))}
+                                    <div className="flex-grow h-0.5 bg-slate-700 mx-2"></div>
+                                    <div className="text-center">
+                                        <div className="w-12 h-12 mx-auto rounded-lg bg-slate-800 border border-green-700 flex items-center justify-center text-green-500 mb-2"><i className="fas fa-database"></i></div>
+                                        <span className="text-[10px] font-bold uppercase">Lake</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* COMPLIANCE */}
-                            <div className="md:col-span-1">
-                                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 h-full">
-                                    <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4">Sanctions Hits</h3>
-                                    <div className="flex flex-col items-center justify-center h-40">
-                                        <div className="text-5xl font-bold text-white mb-2">{metrics.failed}</div>
-                                        <div className="text-xs text-red-400 uppercase font-bold text-center">Blocked<br/>Transactions</div>
-                                    </div>
+                            {/* LIVE LOGS */}
+                            <div className="bg-black/30 rounded-xl border border-slate-800 p-4 h-48 overflow-hidden flex flex-col font-mono text-[10px]">
+                                <div className="flex justify-between border-b border-slate-800 pb-2 mb-2">
+                                    <span className="text-gray-400">LIVE ISO 20022 TRACE</span>
+                                    <span className="text-green-500 animate-pulse">● RECIEVING</span>
+                                </div>
+                                <div className="space-y-1 overflow-y-auto">
+                                    {logs.map((log) => (
+                                        <div key={log.id} className="grid grid-cols-12 gap-2">
+                                            <span className="col-span-2 text-gray-600">{log.time}</span>
+                                            <span className="col-span-2 text-blue-300">{log.type}</span>
+                                            <span className="col-span-2 text-white">{log.region}</span>
+                                            <span className={`col-span-4 font-bold ${log.status.includes('NACK') || log.status.includes('HELD') ? 'text-red-500' : 'text-green-500'}`}>{log.status}</span>
+                                            <span className="col-span-2 text-right text-gray-600">{log.latency}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* COMPLIANCE */}
+                        <div className="md:col-span-1">
+                            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 h-full">
+                                <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4">Sanctions Hits</h3>
+                                <div className="flex flex-col items-center justify-center h-40">
+                                    <div className="text-5xl font-bold text-white mb-2">{metrics.failed}</div>
+                                    <div className="text-xs text-red-400 uppercase font-bold text-center">Blocked<br />Transactions</div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                );
-            };
+                </div>
+            );
+        };
 
         // 3. Layout Components
         const Dashboard = ({ active, stats, timer, progressData, streak, totalDecks, pressureMode, onTogglePressure }) => {
@@ -978,7 +978,8 @@
         };
 
         // ---START AI MODE ---
-        // --- GEMINI LIVE VOICE MODE (UPDATED: AUTO-SCROLL ON LOAD + SCROLL DOWN BUTTON) ---
+
+        // --- GEMINI LIVE VOICE MODE (ENHANCED: MAGIC FIX AUTOCORRECT) ---
         const AIMode = ({ onEnd, toggleFocus, isFocusMode, gender, speed, region, setGender, setSpeed, setRegion }) => {
             const [status, setStatus] = useState("IDLE");
             const [thinkingMode, setThinkingMode] = useState("low");
@@ -991,6 +992,7 @@
             const [reviewMode, setReviewMode] = useState(false);
             const [inputValue, setInputValue] = useState("");
             const [inputAudioUrl, setInputAudioUrl] = useState(null);
+            const [isFixing, setIsFixing] = useState(false); // NEW: Loading state for Magic Fix
 
             // --- RECORDING & WPM STATES ---
             const [isRecording, setIsRecording] = useState(false);
@@ -1019,7 +1021,6 @@
                 };
             }, []);
 
-            // AUTO-SCROLL LOGIC (Triggers on Load, New Message, or Status Change)
             useEffect(() => {
                 if (chatScrollRef.current) {
                     chatScrollRef.current.scrollTo({
@@ -1163,6 +1164,31 @@
                 setReviewMode(true);
             };
 
+            // NEW: MAGIC FIX HANDLER
+            const handleMagicFix = async () => {
+                const textToFix = (inputValue + " " + interimText).trim();
+                if (!textToFix) return;
+
+                setIsFixing(true);
+                try {
+                    const aiUrl = localStorage.getItem('jpm_ai_url');
+                    const response = await fetch(aiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ data: { action: "fixGrammar", text: textToFix } })
+                    });
+                    const data = await response.json();
+                    if (data.data?.text) {
+                        setInputValue(data.data.text);
+                        setInterimText(""); // Clear any lingering interim text
+                    }
+                } catch (e) {
+                    console.error("Magic Fix Failed", e);
+                    alert("Could not auto-correct text. Please check connection.");
+                }
+                setIsFixing(false);
+            };
+
             const handleEdit = () => { setReviewMode(false); };
             const handleCancel = () => {
                 if (isRecording) toggleRecording();
@@ -1297,10 +1323,28 @@
                                 </div>
                                 <div className="flex-grow flex flex-col relative bg-slate-800/50 rounded-2xl border border-slate-700 overflow-hidden shadow-inner">
                                     {reviewMode ? (
-                                        <div className="p-6 h-full flex flex-col">
+                                        <div className="p-6 h-full flex flex-col relative">
                                             <div className="flex-grow overflow-y-auto mb-4 p-4 bg-slate-900/50 rounded-xl border border-slate-800">
-                                                <p className="text-gray-200 text-lg leading-relaxed font-sans whitespace-pre-wrap">{inputValue} {interimText}</p>
+                                                {isFixing ? (
+                                                    <div className="h-full flex flex-col items-center justify-center text-jpm-accent animate-pulse gap-2">
+                                                        <i className="fas fa-magic text-3xl"></i>
+                                                        <span className="text-xs font-mono uppercase">Intelligent Auto-Correction...</span>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-gray-200 text-lg leading-relaxed font-sans whitespace-pre-wrap">{inputValue} {interimText}</p>
+                                                )}
                                             </div>
+
+                                            {/* MAGIC FIX BUTTON (Floating in Review Mode) */}
+                                            {!isFixing && (
+                                                <button
+                                                    onClick={handleMagicFix}
+                                                    className="absolute top-8 right-8 bg-purple-600/20 text-purple-300 border border-purple-500/50 hover:bg-purple-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 shadow-lg backdrop-blur-md"
+                                                >
+                                                    <i className="fas fa-magic"></i> Magic Fix
+                                                </button>
+                                            )}
+
                                             {inputAudioUrl && (
                                                 <div className="flex items-center gap-4 p-4 bg-slate-800 rounded-xl border border-slate-700 mb-2">
                                                     <div className="w-10 h-10 rounded-full bg-slate-700 text-jpm-accent flex items-center justify-center border border-slate-600"><i className="fas fa-play"></i></div>
