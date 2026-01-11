@@ -309,6 +309,62 @@
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo, useCallback } = React;
+        //Cloud sync state
+        const [stats, setStats] = useState(JSON.parse(localStorage.getItem('jpm_stats')) || {});
+        const [isSyncing, setIsSyncing] = useState(false);
+        // 1. INITIAL PULL: Sync from Cloud on App Load (Requirement 14)
+        useEffect(() => {
+        const fetchGlobalProgress = async () => {
+            const aiUrl = localStorage.getItem('jpm_ai_url');
+            if (!aiUrl) return;
+            try {
+                const res = await fetch(aiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: { action: "fetchStats", userID: "satnam_default" } })
+                });
+                const result = await res.json();
+                if (result.data?.stats) {
+                    setStats(result.data.stats); // Overwrite local with Cloud Truth
+                    localStorage.setItem('jpm_stats', JSON.stringify(result.data.stats));
+                }
+            } catch (e) { console.error("Initial Sync Failed", e); }
+        };
+        fetchGlobalProgress();
+    }, []); // Empty dependency ensures this only runs once at startup
+
+    // 2. DEBOUNCED PUSH: Sync to Cloud whenever Stats change (Requirement 14)
+    useEffect(() => {
+        const syncToCloud = async () => {
+            const aiUrl = localStorage.getItem('jpm_ai_url');
+            if (!aiUrl || Object.keys(stats).length === 0) return;
+            
+            setIsSyncing(true);
+            try {
+                await fetch(aiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: { 
+                        action: "syncStats", 
+                        userID: "satnam_default", 
+                        stats: stats 
+                    } })
+                });
+            } catch (e) { console.error("Cloud Push Failed", e); }
+            finally { setIsSyncing(false); }
+        };
+
+        const timer = setTimeout(syncToCloud, 3000); // 3-second debounce
+        return () => clearTimeout(timer);
+    }, [stats]); // Triggers whenever stats change
+
+    const updateStats = (newStats) => {
+        setStats(prev => {
+            const updated = { ...prev, ...newStats };
+            localStorage.setItem('jpm_stats', JSON.stringify(updated));
+            return updated;
+        });
+    };
 
         // --- 1. CORE UTILS ---
         const parseCSV = (text) => {
@@ -349,14 +405,16 @@
             hasRecognition: () => 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window,
             hasSynthesis: () => 'speechSynthesis' in window,
             voices: [],
-            phoneticMap: { "TUPE": "Too P", "SQL": "Sequel", "JPM": "J P M", "API": "A P I", "OOPS": "Oops", 
-            "JDBC": "J D B C", "PACS.002": "pacs two", "PACS.008": "pacs eight", "PACS.009": "pacs nine", 
-            "PAIN.001": "pain one", "PAIN.002": "pain two", "SWIFT": "Swift", "KYC": "K Y C", "AML": "A M L", 
-            "OFAC": "O F A C", "GDP": "G D P", "IP": "I P", "UI": "U I", "UX": "U X", "JSON": "Jason", "XML": 
-            "X M L", "HTML": "H T M L", "CSS": "C S S", "HTTP": "H T T P", "HTTPS": "H T T P S", "TCP": "T C P", 
-            "IPFS": "I P F S", "NFT": "N F T", "GUI": "G U I", "Pacs.002": "pacs two", "Pacs.008": "pacs eight", 
-            "Pacs.009": "pacs nine", "Pain.001": "pain one", "Pain.002": "pain two" },
-            
+            phoneticMap: {
+                "TUPE": "Too P", "SQL": "Sequel", "JPM": "J P M", "API": "A P I", "OOPS": "Oops",
+                "JDBC": "J D B C", "PACS.002": "pacs two", "PACS.008": "pacs eight", "PACS.009": "pacs nine",
+                "PAIN.001": "pain one", "PAIN.002": "pain two", "SWIFT": "Swift", "KYC": "K Y C", "AML": "A M L",
+                "OFAC": "O F A C", "GDP": "G D P", "IP": "I P", "UI": "U I", "UX": "U X", "JSON": "Jason", "XML":
+                    "X M L", "HTML": "H T M L", "CSS": "C S S", "HTTP": "H T T P", "HTTPS": "H T T P S", "TCP": "T C P",
+                "IPFS": "I P F S", "NFT": "N F T", "GUI": "G U I", "Pacs.002": "pacs two", "Pacs.008": "pacs eight",
+                "Pacs.009": "pacs nine", "Pain.001": "pain one", "Pain.002": "pain two"
+            },
+
             getPhoneticText: function (text) {
                 if (!text) return "";
                 return text.split(' ').map(word => {
@@ -375,7 +433,7 @@
             },
 
             /* CONTEXT: Adding global controls for Pitch and Rate to fix "fast/unnatural" voice issues */
-            voiceConfig: { lang: 'en-GB', gender: 'male', pitch: 1.0, rate: 0.9 },            
+            voiceConfig: { lang: 'en-GB', gender: 'male', pitch: 1.0, rate: 0.9 },
 
             speak: function (text) {
                 if (!this.hasSynthesis()) return;
@@ -1009,204 +1067,309 @@
         };
 
         // ---START AI MODE ---
-        
+
         const AIMode = ({ onEnd, gender, speed, region }) => {
-    // 1. Core States
-    const [status, setStatus] = React.useState("IDLE");
-    const [messages, setMessages] = React.useState([]);
-    const [interimText, setInterimText] = React.useState("");
-    const [isPaused, setIsPaused] = React.useState(false);
-    const [url, setUrl] = React.useState(localStorage.getItem('jpm_ai_url') || "");
-    const [showConfig, setShowConfig] = React.useState(!localStorage.getItem('jpm_ai_url'));
+            // 1. STATE & PROTOCOL MANAGEMENT
+            const [status, setStatus] = useState("IDLE");
+            const [messages, setMessages] = useState([]);
+            const [userInput, setUserInput] = useState("");
+            const [audioUrl, setAudioUrl] = useState(null);
+            const [wpm, setWpm] = useState(0);
+            const [isListening, setIsListening] = useState(false);
+            const [isPaused, setIsPaused] = useState(false);
 
-    // 2. Hardware Refs (Crucial for Fix #2 & #4)
-    const recognitionRef = React.useRef(null);
-    const currentAudioRef = React.useRef(null);
-    const isBotSpeakingRef = React.useRef(false);
-    const fullTranscriptRef = React.useRef("");
-    const silencerTimerRef = React.useRef(null);
+            // 2. HARDWARE & PERSISTENCE REFS
+            const recognitionRef = useRef(null);
+            const mediaRecorderRef = useRef(null);
+            const audioChunksRef = useRef([]);
+            const currentAudioRef = useRef(null);
+            const speechStartRef = useRef(0);
+            const scrollRef = useRef(null);
+            const url = localStorage.getItem('jpm_ai_url');
 
-    // 3. Persistent History Load (Requirement #3)
-    React.useEffect(() => {
-        const loadHistory = async () => {
-            if (!url) return;
-            try {
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ data: { action: "fetchHistory", userID: "satnam_default", sessionID: "voice-session-satnam" } })
-                });
-                const result = await res.json();
-                if (result.data?.history) {
-                    const formatted = result.data.history.map(h => [
-                        h.userSaid && { role: 'user', text: h.userSaid },
-                        h.aiSaid && { role: 'model', text: h.aiSaid }
-                    ].filter(Boolean)).flat();
-                    setMessages(formatted);
+            // 3. CLOUD SYNC & AUTO-SCROLL (Req 8, 9, 10, 14)
+            useEffect(() => {
+                const loadCloudContext = async () => {
+                    if (!url) return;
+                    try {
+                        // Fetch Historical Chat (Interviews Collection)
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                data: {
+                                    action: "fetchHistory",
+                                    userID: "satnam_default",
+                                    sessionID: "voice-session-satnam"
+                                }
+                            })
+                        });
+                        const result = await res.json();
+                        if (result.data?.history) {
+                            const formatted = result.data.history.map(h => [
+                                h.userSaid && { role: 'user', text: h.userSaid, time: h.timestamp, name: "Satnam Singh" },
+                                h.aiSaid && { role: 'model', text: h.aiSaid, time: h.timestamp, name: "J.P. Morgan Panel" }
+                            ].filter(Boolean)).flat();
+                            setMessages(formatted);
+                        }
+                    } catch (e) { console.error("Cloud Fetch Failed:", e); }
+                };
+                loadCloudContext();
+            }, [url]);
+
+            useEffect(() => {
+                if (scrollRef.current) scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+            }, [messages, status]);
+
+            // 4. AGGRESSIVE CLEANUP PROTOCOL (Req 7, 11)
+            const stopEverything = useCallback(() => {
+                if (recognitionRef.current) {
+                    recognitionRef.current.onend = null;
+                    recognitionRef.current.abort(); // Hardware kill
                 }
-            } catch (e) { console.warn("History sync failed."); }
-        };
-        loadHistory();
-    }, [url]);
+                if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                    mediaRecorderRef.current.stop();
+                }
+                if (currentAudioRef.current) {
+                    currentAudioRef.current.pause();
+                    currentAudioRef.current.src = "";
+                    currentAudioRef.current.load();
+                }
+                window.speechSynthesis.cancel();
+                setStatus("IDLE");
+                setIsListening(false);
+            }, []);
 
-    // 4. Aggressive Cleanup (Requirement #5)
-    const stopEverything = React.useCallback(() => {
-        isBotSpeakingRef.current = false;
-        if (recognitionRef.current) {
-            recognitionRef.current.onend = null;
-            recognitionRef.current.abort(); // Stronger than .stop()
-        }
-        if (currentAudioRef.current) {
-            currentAudioRef.current.pause();
-            currentAudioRef.current.src = "";
-            currentAudioRef.current.load();
-        }
-        setStatus("IDLE");
-        setInterimText("");
-    }, []);
+            // Global End Button Listener
+            useEffect(() => {
+                const handleEndSignal = () => { stopEverything(); onEnd(0, []); };
+                window.addEventListener('jpm-trigger-end', handleEndSignal);
+                return () => window.removeEventListener('jpm-trigger-end', handleEndSignal);
+            }, [onEnd, stopEverything]);
 
-    React.useEffect(() => {
-        const handleHeaderEnd = () => { stopEverything(); onEnd(0, []); };
-        window.addEventListener('jpm-trigger-end', handleHeaderEnd);
-        return () => window.removeEventListener('jpm-trigger-end', handleHeaderEnd);
-    }, [onEnd, stopEverything]);
+            // 5. INPUT ENGINE: DRAFTING & LIVE ANALYTICS (Req 2, 4)
+            const toggleVoiceDrafting = async () => {
+                if (isListening) {
+                    if (recognitionRef.current) recognitionRef.current.stop();
+                    if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
+                    setIsListening(false);
+                } else {
+                    const SpeechReg = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    const recognition = new SpeechReg();
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    recognition.lang = region || 'en-GB';
 
-    // 5. Transcription Engine (Requirement #1 & #2)
-    const startListening = React.useCallback(() => {
-        const SpeechReg = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechReg) return;
+                    speechStartRef.current = Date.now();
+                    audioChunksRef.current = [];
 
-        const recognition = new SpeechReg();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = region || 'en-GB';
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorderRef.current = new MediaRecorder(stream);
+                    mediaRecorderRef.current.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+                    mediaRecorderRef.current.onstop = () => {
+                        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                        setAudioUrl(URL.createObjectURL(blob));
+                        stream.getTracks().forEach(t => t.stop());
+                    };
 
-        recognition.onstart = () => {
-            setStatus("LISTENING");
-            isBotSpeakingRef.current = false;
-            fullTranscriptRef.current = "";
-        };
+                    recognition.onresult = (e) => {
+                        let final = "";
+                        for (let i = e.resultIndex; i < e.results.length; ++i) {
+                            if (e.results[i].isFinal) final += e.results[i][0].transcript;
+                        }
+                        if (final) {
+                            setUserInput(prev => {
+                                const updated = (prev ? prev + " " : "") + final.trim();
+                                // Real-time WPM calculation (Req 4)
+                                const wordCount = updated.trim().split(/\s+/).length;
+                                const minutes = (Date.now() - speechStartRef.current) / 60000;
+                                // Update WPM only if speaking for more than 3 seconds to avoid spikes
+                                if (updated.trim().length === 0) {
+                                    setWpm(0); // <--- Reset if empty
+                                } else if (minutes > 0.05) {
+                                    setWpm(Math.round(wordCount / minutes));
+                                }
+                                return updated;
+                            });
+                        }
+                    };
 
-        recognition.onresult = (e) => {
-            if (isBotSpeakingRef.current) return; // HARDWARE LOCK: Bot won't hear itself
-
-            if (silencerTimerRef.current) clearTimeout(silencerTimerRef.current);
-            let interim = "", finalized = "";
-
-            for (let i = e.resultIndex; i < e.results.length; ++i) {
-                if (e.results[i].isFinal) finalized += e.results[i][0].transcript + " ";
-                else interim += e.results[i][0].transcript;
-            }
-
-            fullTranscriptRef.current += finalized;
-            const currentView = (fullTranscriptRef.current + interim).trim();
-            setInterimText(currentView);
-
-            if (currentView.length > 2) {
-                silencerTimerRef.current = setTimeout(() => {
-                    if (!isBotSpeakingRef.current) {
-                        sendMessage(currentView);
-                        recognition.stop();
-                    }
-                }, 1800);
-            }
-        };
-
-        recognitionRef.current = recognition;
-        recognition.start();
-    }, [region]);
-
-    const speakResponse = async (text) => {
-        isBotSpeakingRef.current = true;
-        if (recognitionRef.current) recognitionRef.current.abort();
-
-        try {
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: { action: "getSpeech", text, gender, speed, region } })
-            });
-            const blob = await res.blob();
-            const audio = new Audio(URL.createObjectURL(blob));
-            currentAudioRef.current = audio;
-
-            audio.onplay = () => setStatus("SPEAKING");
-            audio.onended = () => {
-                isBotSpeakingRef.current = false;
-                setInterimText("");
-                startListening();
+                    recognition.start();
+                    mediaRecorderRef.current.start();
+                    recognitionRef.current = recognition;
+                    setIsListening(true);
+                }
             };
-            audio.play();
-        } catch (e) { stopEverything(); }
-    };
 
-    const sendMessage = async (text) => {
-        setStatus("THINKING");
-        const newHistory = [...messages, { role: 'user', text }];
-        setMessages(newHistory);
-        try {
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: { message: text, sessionID: "voice-session-satnam", history: newHistory.map(m => ({ role: m.role === 'model' ? 'ai' : 'user', text: m.text })) } })
-            });
-            const data = await res.json();
-            const aiText = data.data?.text || "Connectivity error.";
-            setMessages(prev => [...prev, { role: 'model', text: aiText }]);
-            speakResponse(aiText);
-        } catch (e) { setStatus("ERROR"); }
-    };
+            // 6. SUBMISSION & AI CYCLE (Req 3, 5, 6)
+            const submitAnswer = async () => {
+                if (!userInput.trim()) return;
 
-    // 6. Responsive UI (Requirement #4 & #8)
-    return (
-        <div className="flex h-full w-full bg-slate-950 text-white overflow-hidden flex-col md:flex-row font-sans">
-            {/* LEFT PANEL: Smaller & Clean */}
-            <div className="w-full md:w-1/4 border-b md:border-r border-slate-800 flex flex-col items-center justify-center p-6 bg-slate-900/40">
-                <div className="flex flex-col items-center space-y-12">
-                    <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full flex items-center justify-center transition-all duration-700 ${status === 'LISTENING' ? 'bg-blue-500/20 shadow-[0_0_50px_rgba(59,130,246,0.4)] animate-pulse border-blue-400/50 border-2' : status === 'SPEAKING' ? 'bg-jpm-accent/20 shadow-[0_0_50px_rgba(197,157,95,0.4)] border-jpm-accent/50 border-2' : 'bg-slate-800 border-slate-700 border'}`}>
-                        <div className={`w-24 h-24 md:w-28 md:h-28 rounded-full bg-slate-950 flex items-center justify-center shadow-inner ${status === 'THINKING' ? 'animate-spin shadow-purple-500/50' : ''}`}>
-                             <div className={`w-8 h-8 rounded-full ${status === 'LISTENING' ? 'bg-blue-400 shadow-[0_0_15px_#60a5fa]' : status === 'SPEAKING' ? 'bg-jpm-accent shadow-[0_0_15px_#C59D5F]' : 'bg-slate-700'}`}></div>
-                        </div>
-                    </div>
-                    <div className="flex flex-col gap-3 w-full max-w-[150px]">
-                        {status === 'IDLE' ? (
-                            <button onClick={startListening} className="w-full bg-jpm-accent text-black font-bold py-2 rounded-lg text-[10px] tracking-widest hover:scale-105 transition">START SESSION</button>
-                        ) : (
-                            <button onClick={stopEverything} className="w-full border border-red-600 text-red-500 py-1.5 rounded-lg text-[10px] font-bold uppercase">End Session</button>
-                        )}
-                        <button onClick={() => setShowConfig(!showConfig)} className="text-[8px] text-slate-600 uppercase tracking-tighter self-center"><i className="fas fa-cog mr-1"></i> Config</button>
-                    </div>
-                </div>
-                {showConfig && (
-                    <div className="absolute inset-x-4 bottom-4 z-50 bg-slate-900 p-4 rounded-xl border border-slate-700 shadow-2xl">
-                        <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Function URL" className="bg-black/50 border border-slate-600 rounded p-2 text-white w-full text-[10px] font-mono mb-2" />
-                        <button onClick={() => { localStorage.setItem('jpm_ai_url', url.trim()); setShowConfig(false); }} className="w-full bg-jpm-accent text-black font-bold text-[10px] py-2 rounded">SYNC</button>
-                    </div>
-                )}
-            </div>
+                // Improved iOS Unlock
+                try {
+                    const unlock = new Audio();
+                    unlock.muted = true; // Playing muted often bypasses stricter blocks
+                    await unlock.play();
+                } catch (e) { console.warn("Audio Context Priming skipped"); }
 
-            {/* RIGHT PANEL: Transcript */}
-            <div className="flex-1 flex flex-col p-4 md:p-8 overflow-y-auto bg-black/20">
-                <div className="space-y-4 pb-12">
-                    {status === 'LISTENING' && interimText && (
-                        <div className="flex justify-end animate-pulse">
-                            <div className="max-w-[85%] p-4 rounded-2xl border border-blue-500 bg-blue-900/20 text-blue-100 text-xs italic shadow-lg">{interimText}...</div>
-                        </div>
-                    )}
-                    {messages.map((msg, i) => (
-                        <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in`}>
-                            <div className={`max-w-[80%] p-4 rounded-2xl border text-sm shadow-xl ${msg.role === 'user' ? 'bg-slate-800 border-slate-700 text-gray-200' : 'bg-slate-900 border-jpm-accent/10 text-white'}`}>
-                                <div className="text-[9px] uppercase font-bold opacity-30 mb-1 tracking-widest">{msg.role === 'user' ? 'Satnam' : 'J.P. Morgan Panel'}</div>
-                                {msg.text}
+                const textToSubmit = userInput;
+                setStatus("THINKING");
+                setUserInput("");
+                setAudioUrl(null);
+
+                const history = [...messages, { role: 'user', text: textToSubmit, time: new Date(), name: "Satnam Singh" }];
+                setMessages(history);
+
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            data: {
+                                message: textToSubmit,
+                                sessionID: "voice-session-satnam",
+                                history: history.map(m => ({ role: m.role === 'model' ? 'ai' : 'user', text: m.text }))
+                            }
+                        })
+                    });
+                    const data = await res.json();
+                    const aiText = data.data?.text || "The panel is processing...";
+
+                    setMessages(prev => [...prev, { role: 'model', text: aiText, time: new Date(), name: "J.P. Morgan Panel" }]);
+                    speakResponse(aiText);
+                } catch (e) { setStatus("IDLE"); }
+            };
+
+            const speakResponse = async (text) => {
+                setStatus("SPEAKING");
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ data: { action: "getSpeech", text, gender, speed, region } })
+                    });
+                    const blob = await res.blob();
+                    const audio = new Audio(URL.createObjectURL(blob));
+                    currentAudioRef.current = audio;
+                    // audio.onended = () => { setStatus("IDLE"); setIsPaused(false); };
+                    audio.onended = () => {
+                        setStatus("IDLE");
+                        setIsPaused(false);
+                        URL.revokeObjectURL(audio.src); // <---  this to free memory
+                    };
+                    audio.play();
+                } catch (e) { setStatus("IDLE"); }
+            };
+
+            const getWpmFeedback = (w) => {
+                if (w < 110) return { label: 'Slow', color: 'text-amber-500', bg: 'bg-amber-900/20' };
+                if (w > 160) return { label: 'Fast', color: 'text-red-500', bg: 'bg-red-900/20' };
+                return { label: 'Good', color: 'text-green-500', bg: 'bg-green-900/20' };
+            };
+
+            // 7. UI RENDER (iPad/iPhone Optimized Layout)
+            return (
+                <div className="flex h-full w-full bg-slate-950 text-white overflow-hidden flex-col md:flex-row font-sans">
+
+                    {/* LEFT PANEL: Workstation Area (Req 1, 2, 4, 13) */}
+                    <div className="w-full md:w-2/5 border-b md:border-r border-slate-800 p-6 bg-slate-900/50 flex flex-col relative transition-all">
+                        {status === 'IDLE' || status === 'THINKING' || status === 'SPEAKING' ? (
+                            <div className="flex flex-col items-center justify-center flex-grow space-y-16 animate-slide-in">
+                                {/* THE AI ORB (Emoji-Free / Requirement 4) */}
+                                <div className={`relative w-44 h-44 rounded-full flex items-center justify-center transition-all duration-700 ${status === 'SPEAKING' ? 'bg-jpm-accent/20 shadow-[0_0_50px_#C59D5F44]' : 'bg-slate-800/40 shadow-inner'}`}>
+                                    <div className="w-28 h-28 rounded-full flex items-center justify-center bg-slate-950 border border-white/5">
+                                        <div className={`w-10 h-10 rounded-full transition-all duration-500 ${status === 'SPEAKING' ? 'bg-jpm-accent animate-pulse shadow-[0_0_20px_#C59D5F]' : status === 'THINKING' ? 'bg-purple-500 animate-spin shadow-[0_0_20px_#A855F7]' : 'bg-slate-700'}`}></div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-4 w-full max-w-[200px]">
+                                    {status === 'IDLE' && (
+                                        <button onClick={() => setStatus("DRAFTING")} className="w-full bg-jpm-accent text-black font-bold py-3 rounded-xl text-xs tracking-widest hover:scale-105 transition shadow-lg shadow-jpm-accent/20 uppercase">Answer Question</button>
+                                    )}
+                                    {status === 'SPEAKING' && (
+                                        <button onClick={() => { if (isPaused) currentAudioRef.current.play(); else currentAudioRef.current.pause(); setIsPaused(!isPaused); }} className="w-full border border-amber-600 text-amber-500 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest">{isPaused ? 'Resume AI' : 'Pause AI'}</button>
+                                    )}
+                                    <button onClick={stopEverything} className="w-full border border-red-900 text-red-500 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest">End Session</button>
+                                </div>
                             </div>
+                        ) : (
+                            /* THE RESPONSE WORKSTATION (DRAFTING/REVIEWING) (Req 3) */
+                            <div className="flex flex-col h-full animate-slide-in">
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="text-[10px] font-bold text-jpm-accent uppercase tracking-widest font-mono">{status === 'DRAFTING' ? 'Drafting Protocol' : 'Review Phase'}</span>
+                                    {wpm > 0 && (
+                                        <div className={`flex items-center gap-2 px-2 py-1 rounded border border-slate-700 ${getWpmFeedback(wpm).bg}`}>
+                                            <span className={`text-[10px] font-bold font-mono ${getWpmFeedback(wpm).color}`}>{wpm} WPM ({getWpmFeedback(wpm).label})</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <textarea
+                                    className={`flex-grow w-full border rounded-2xl p-6 text-lg focus:outline-none transition-colors resize-none mb-6 ${status === 'REVIEWING' ? 'bg-slate-900 border-slate-800 text-gray-400' : 'bg-slate-800/50 border-slate-700 text-white focus:border-jpm-accent'}`}
+                                    placeholder="Type or start recording..."
+                                    value={userInput}
+                                    onChange={(e) => setUserInput(e.target.value)}
+                                    readOnly={status === 'REVIEWING'}
+                                />
+
+                                {status === 'DRAFTING' ? (
+                                    <div className="flex gap-4">
+                                        <button onClick={toggleVoiceDrafting} className={`flex-1 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition ${isListening ? 'bg-red-600 animate-pulse text-white' : 'bg-slate-700 hover:bg-slate-600 text-jpm-accent'}`}>
+                                            <i className={`fas ${isListening ? 'fa-stop' : 'fa-microphone'}`}></i>
+                                            {isListening ? 'Stop' : 'Voice Input'}
+                                        </button>
+                                        <button onClick={() => { if (isListening) toggleVoiceDrafting(); setStatus("REVIEWING"); }} className="flex-1 bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-500 transition text-xs uppercase">Done</button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4 animate-slide-in">
+                                        {audioUrl && (
+                                            <div className="p-4 bg-slate-800 rounded-xl border border-slate-700 flex flex-col gap-2">
+                                                <p className="text-[9px] font-bold text-gray-500 uppercase font-mono tracking-widest">Verify Recorded Response</p>
+                                                <audio src={audioUrl} controls className="w-full h-8"></audio>
+                                            </div>
+                                        )}
+                                        <div className="flex gap-4">
+                                            <button onClick={() => setStatus("DRAFTING")} className="flex-1 bg-slate-700 text-white font-bold py-4 rounded-xl hover:bg-slate-600 transition text-xs uppercase">Edit Text</button>
+                                            <button onClick={submitAnswer} className="flex-1 bg-jpm-accent text-black font-bold py-4 rounded-xl hover:bg-white transition text-xs uppercase tracking-widest shadow-lg shadow-jpm-accent/20">Submit to Panel</button>
+                                        </div>
+                                    </div>
+                                )}
+                                <button onClick={() => setStatus("IDLE")} className="mt-4 text-gray-600 text-[10px] font-bold uppercase hover:text-white transition">Cancel Action</button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* RIGHT PANEL: Comprehensive History (Req 8, 9, 10) */}
+                    <div className="flex-1 flex flex-col p-4 md:p-8 overflow-y-auto bg-black/20 stable-scroll">
+                        <div className="space-y-6">
+                            {messages.length === 0 && (
+                                <div className="h-full flex flex-col items-center justify-center text-slate-700 text-center py-20">
+                                    <i className="fas fa-history text-4xl mb-4 opacity-20"></i>
+                                    <p className="font-quote italic text-xl">The historical session is empty. Start a new interview journey...</p>
+                                </div>
+                            )}
+                            {messages.map((msg, i) => (
+                                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in`}>
+                                    <div className={`max-w-[85%] p-5 rounded-2xl border shadow-xl ${msg.role === 'user' ? 'bg-slate-800 border-slate-700 text-gray-200' : 'bg-slate-900 border-jpm-accent/10 text-white'}`}>
+                                        <div className="flex justify-between items-center mb-2 gap-8 opacity-40">
+                                            <span className="text-[9px] font-bold uppercase tracking-widest font-mono">{msg.role === 'user' ? 'Satnam Singh' : 'J.P. Morgan Panel'}</span>
+                                            <span className="text-[8px] font-mono">{new Date(msg.time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                        <p className="text-base leading-relaxed whitespace-pre-wrap font-sans">{msg.text}</p>
+                                    </div>
+                                </div>
+                            ))}
+                            <div ref={scrollRef} />
+                            {status === 'THINKING' && (
+                                <div className="flex justify-start animate-pulse">
+                                    <div className="bg-slate-900 p-3 rounded-lg text-jpm-accent font-mono text-[10px] border border-jpm-accent/10 tracking-widest uppercase">Analyzing Response Pipeline...</div>
+                                </div>
+                            )}
                         </div>
-                    ))}
-                    {status === 'THINKING' && <div className="bg-slate-900 p-2 rounded border border-jpm-accent/10 text-jpm-accent text-[9px] font-mono animate-pulse w-max">ANALYZING...</div>}
+                    </div>
                 </div>
-            </div>
-        </div>
-    );
-};
+            );
+        };
 
         //END AI MODE
 
@@ -1433,6 +1596,7 @@
             /*Enterprise Auto-Sync. This monitors all application activity 
             and automatically pushes a master backup to Firebase every 3 seconds 
             after the last change to ensure iPad/Laptop parity. */
+            /*
             useEffect(() => {
                 localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(progress));
                 localStorage.setItem('jpm_custom_projects', JSON.stringify(customProjects));
@@ -1463,7 +1627,7 @@
 
                 const timer = setTimeout(syncToCloud, 3000);
                 return () => clearTimeout(timer);
-            }, [progress, customProjects]);
+            }, [progress, customProjects]);*/
 
             const startSession = (m, deckName, specificQueue = null) => {
 
@@ -1553,26 +1717,26 @@
             // FIX: Premium Tiles (Uniform Navy Background, Icon Color Accent, Gold Hover)
             const RenderDeckList = ({ items, mId }) => {
                 const decks = getDecks(items);
-                
+
                 /* Spaced Repetition (Leitner) Filtering. Decks only reappear in 'My Progress' when the current timestamp exceeds 'nextReview'. */
 
                 const activeDecks = decks.filter(d => {
                     const p = progress[`${mId}-${d}`];
                     if (!p) return false;
-                    
+
                     // If a deck is 'Completed', hide it until the scientific review date arrives
                     if (p.status === 'Completed') {
                         return p.nextReview && p.nextReview < Date.now();
                     }
-                    
+
                     // Always show 'In Progress' decks so you can finish them
                     return true;
                 });
 
                 const newDecks = decks.filter(d => !progress[`${mId}-${d}`]);
                 const isLinkMode = mId === 'study' || mId === 'skill';
-                
-                
+
+
                 // Determine icon color based on mode
                 let iconColor = 'text-jpm-accent'; // Unified Gold
 
@@ -1685,7 +1849,7 @@
                                 {(mode === 'flashcard' || mode === 'vocab') && activeDeck && (<ComponentSandbox> <FlashcardMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox>)}
                                 {(mode === 'type') && activeDeck && (<ComponentSandbox> <TypeMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox>)}
                                 {(mode === 'mcq') && activeDeck && (<ComponentSandbox> <MCQMode key={sessionKey} deckData={activeDeck.items} onEnd={endSession} onStatsUpdate={updateStats} pressureMode={pressureMode} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} /> </ComponentSandbox>)}
-                                {(mode === 'ai_interview') && (<ComponentSandbox> <AIMode key={sessionKey} onEnd={endSession} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} gender={gender} speed={speed} region={region} setGender={setGender} setSpeed={setSpeed} setRegion={setRegion} /> </ComponentSandbox>)}
+                                {(mode === 'ai_interview') && (<ComponentSandbox> <AIMode key={sessionKey} onEnd={endSession} onStatsUpdate={updateStats} toggleFocus={() => setFocusMode(!focusMode)} isFocusMode={focusMode} gender={gender} speed={speed} region={region} setGender={setGender} setSpeed={setSpeed} setRegion={setRegion} /> </ComponentSandbox>)}
                             </main>
                             {!focusMode && <MobileNavBar currentMode={mode} setMode={setMode} onPrompt={() => setShowPrompts(true)} onSettings={() => setShowSettings(true)} />}
                         </div>
