@@ -1956,22 +1956,49 @@ const App = () => {
                 setTestResults(results);
             };
 
+// --- DATA LOADING (CONNECTED TO GITHUB) ---
             useEffect(() => {
+                /* Cloud Boot Protocol. 
+                   1. Tries to fetch "Fresh" Data from GitHub first.
+                   2. Checks Cloud Sync for progress.
+                   3. Falls back to LocalStorage if offline. */
+                
                 const load = async () => {
                     try {
-                        const ts = Date.now();
-                        const [f, t, m, s, p, sk, v] = await Promise.all([
-                            fetch(`flashcards.csv?t=${ts}`, { cache: 'no-store' }).then(r => r.ok ? r.text() : ""),
-                            fetch(`type_answer.csv?t=${ts}`, { cache: 'no-store' }).then(r => r.ok ? r.text() : ""),
-                            fetch(`mcq.csv?t=${ts}`, { cache: 'no-store' }).then(r => r.ok ? r.text() : ""),
-                            fetch(`context.csv?t=${ts}`, { cache: 'no-store' }).then(r => r.ok ? r.text() : ""),
-                            fetch(`prompt.csv?t=${ts}`, { cache: 'no-store' }).then(r => r.ok ? r.text() : ""),
-                            fetch(`skill.csv?t=${ts}`, { cache: 'no-store' }).then(r => r.ok ? r.text() : ""),
-                            fetch(`vocab.csv?t=${ts}`, { cache: 'no-store' }).then(r => r.ok ? r.text() : "")
-                        ]);
-                        setData({ flashcards: f ? parseCSV(f) : [], type: t ? parseCSV(t) : [], mcq: m ? parseCSV(m) : [], study: s ? parseCSV(s) : [], prompts: p ? parseCSV(p) : [], skills: sk ? parseCSV(sk) : [], vocab: v ? parseCSV(v) : [] });
-                    } catch (e) { console.error(e); }
+                        // *** CONFIGURATION: UPDATE THIS URL ***
+                        // Go to your GitHub Repo -> Click 'flashcards.csv' -> Click 'Raw' -> Copy that URL prefix.
+                        // It should look like: "https://raw.githubusercontent.com/<USER>/<REPO>/main/"
+                        const GITHUB_BASE = "https://raw.githubusercontent.com/satnam05/JPM-Interview-App/master/";
+                        
+                        const ts = Date.now(); // Cache busting
 
+                        // Fetch all CSVs from GitHub directly
+                        const [f, t, m, s, p, sk, v] = await Promise.all([
+                            fetch(`${GITHUB_BASE}flashcards.csv?t=${ts}`).then(r => r.ok ? r.text() : ""),
+                            fetch(`${GITHUB_BASE}type_answer.csv?t=${ts}`).then(r => r.ok ? r.text() : ""),
+                            fetch(`${GITHUB_BASE}mcq.csv?t=${ts}`).then(r => r.ok ? r.text() : ""),
+                            fetch(`${GITHUB_BASE}context.csv?t=${ts}`).then(r => r.ok ? r.text() : ""),
+                            fetch(`${GITHUB_BASE}prompt.csv?t=${ts}`).then(r => r.ok ? r.text() : ""),
+                            fetch(`${GITHUB_BASE}skill.csv?t=${ts}`).then(r => r.ok ? r.text() : ""),
+                            fetch(`${GITHUB_BASE}vocab.csv?t=${ts}`).then(r => r.ok ? r.text() : "")
+                        ]);
+
+                        // Load data into App State
+                        setData({ 
+                            flashcards: f ? parseCSV(f) : [], 
+                            type: t ? parseCSV(t) : [], 
+                            mcq: m ? parseCSV(m) : [], 
+                            study: s ? parseCSV(s) : [], 
+                            prompts: p ? parseCSV(p) : [], 
+                            skills: sk ? parseCSV(sk) : [], 
+                            vocab: v ? parseCSV(v) : [] 
+                        });
+
+                    } catch (e) { 
+                        console.error("GitHub Load Error - Check your URL:", e); 
+                    }
+
+                    // --- EXISTING CLOUD SYNC LOGIC (PRESERVED) ---
                     const aiUrl = localStorage.getItem('jpm_ai_url');
                     if (aiUrl) {
                         try {
@@ -2003,8 +2030,9 @@ const App = () => {
                         if (parsed._settings) setPressureMode(parsed._settings.pressureMode || false);
                     }
                 };
-                if (isAuthenticated) load(); // Only load data if authenticated
-            }, [isAuthenticated]);
+                
+                load();
+            }, []);
 
             useEffect(() => { let interval; if (isAuthenticated && mode !== 'menu') interval = setInterval(() => setTimer(t => t + 1), 1000); else setTimer(0); return () => clearInterval(interval); }, [mode, isAuthenticated]);
 
