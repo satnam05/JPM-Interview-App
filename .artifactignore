@@ -1,0 +1,16 @@
+# Ignore all CSV files (Data is fetched from Raw Git URL now)
+*.csv
+
+# Ignore hidden system files
+.git
+.github
+.gitignore
+.DS_Store
+
+# Ignore documentation/projects
+README.md
+/infrastructure
+/pipeline-services
+/dashboard
+/api
+/sql
