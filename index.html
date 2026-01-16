@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JP Morgan Interview Preparation App V21.01</title>
+    <title>JP Morgan Interview Preparation App V21.02</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏦</text></svg>">
 
@@ -2096,6 +2096,36 @@
                 const newP = { ...progress, [`${m}-${d}`]: { status, score, date: new Date().toLocaleString(), queue, nextReview, leitnerLevel }, _settings: { pressureMode, leitnerConfig } };
                 setProgress(newP); localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(newP));
             };
+
+            // --- NEW: BULK COMPLETE FUNCTION (SPACED REPETITION SAFE) ---
+            const markCategoryComplete = (mId, deckItems) => {
+                // Safety check to prevent accidental clicks
+                if (!window.confirm(`⚠️ SUPER ADMIN ACTION\n\nMark ALL ${deckItems.length} decks in '${mId.toUpperCase()}' as 100% Completed?\n\nThis will update your analytics immediately.`)) return;
+
+                const updates = {};
+                const now = Date.now();
+
+                deckItems.forEach(item => {
+                    const d = item.Deck;
+
+                    // We set the item to "Mastered" (Level 4)
+                    // We schedule the next review based on your 'l4' setting (long-term memory)
+                    updates[`${mId}-${d}`] = {
+                        status: 'Completed',
+                        score: 100,
+                        date: new Date().toLocaleString(),
+                        queue: [],
+                        nextReview: now + (leitnerConfig.l4 * 24 * 60 * 60 * 1000),
+                        leitnerLevel: 4
+                    };
+                });
+
+                // Atomic update: merges new completed items with existing progress
+                const newP = { ...progress, ...updates };
+                setProgress(newP);
+                localStorage.setItem('jpm_prep_progress_v20', JSON.stringify(newP));
+            };
+
             const markStudyComplete = (mId, deckName) => { saveProgress(mId, deckName, 'Completed', 100); };
             const updateStats = useCallback(({ completed, correct }) => { setStats(prev => { if (completed === undefined || correct === undefined) return prev; if (prev.completed === completed && prev.correct === correct) return prev; return { ...prev, completed, correct }; }); }, []);
 
@@ -2140,7 +2170,7 @@
                             <header className="flex-shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white h-16 flex items-center justify-between px-6 shadow-lg z-50 relative">
                                 <div className="flex items-center gap-3">
                                     <i className="fas fa-university text-jpm-accent text-2xl"></i>
-                                    <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">V21.01 | VP Edition</span></div>
+                                    <div className="flex flex-col"><h1 className="text-lg font-bold leading-tight tracking-tight font-quote text-gray-100">JP Morgan Interview Prep</h1><span className="text-xs text-slate-400 font-mono">V21.02 | VP Edition | Developed by Satnam using GenAI</span></div>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <button onClick={() => setShowTechModal(true)} className="p-2 rounded hover:bg-white/10 text-jpm-accent transition-colors animate-pulse-soft hover:shadow-[0_0_15px_rgba(197,157,95,0.4)]" title="Tech Insights"><i className="fas fa-globe-americas"></i></button>
@@ -2186,15 +2216,29 @@
                                         {/* FIX: Added pt-4 here to give visual space between Quote and Grid */}
                                         <div className="flex-grow overflow-y-auto pt-4"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-7xl mx-auto pb-24">
                                             {menuTiles.map(m => (
-                                                <div key={m.id} className="bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black rounded-xl shadow-2xl overflow-hidden transition-all hover:-translate-y-1 border-t border-t-white/10 border-b border-b-black/50 border-x border-slate-800 hover:border-jpm-accent/50 hover:shadow-[0_0_20px_rgba(197,157,95,0.15)] group">
+                                                <div key={m.id} className="bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black rounded-xl shadow-2xl overflow-hidden transition-all hover:-translate-y-1 border-t border-t-white/10 border-b border-b-black/50 border-x border-slate-800 hover:border-jpm-accent/50 hover:shadow-[0_0_20px_rgba(197,157,95,0.15)] group relative">
+
+                                                    {/* TILE HEADER */}
                                                     <div className="p-4 text-center relative overflow-hidden border-b border-slate-800">
+                                                        {/* Background Faded Icon */}
                                                         <div className="absolute top-0 right-0 p-4 opacity-5 transform scale-150 text-jpm-accent"><i className={`fas ${m.icon} text-6xl`}></i></div>
+
+                                                        {/* BULK DONE BUTTON (Top Right Corner) */}
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); markCategoryComplete(m.id, m.items); }}
+                                                            className="absolute top-2 right-2 z-20 w-8 h-8 rounded-full bg-slate-800/50 border border-slate-700 hover:bg-green-900/80 hover:border-green-500 text-gray-500 hover:text-green-400 transition-all flex items-center justify-center shadow-lg"
+                                                            title="Mark All As Mastered"
+                                                        >
+                                                            <i className="fas fa-check-double text-xs"></i>
+                                                        </button>
+
                                                         <div className="flex items-center justify-center gap-3 relative z-10">
                                                             <i className={`fas ${m.icon} text-2xl text-jpm-accent group-hover:text-white transition-colors`}></i>
                                                             <h3 className="text-lg font-bold font-quote text-gray-100 group-hover:text-jpm-accent transition-colors">{m.title}</h3>
                                                         </div>
                                                     </div>
-                                                    {/* FIX: Passing props explicitly to the external component */}
+
+                                                    {/* LIST CONTENT (Using the stable external component) */}
                                                     <RenderDeckList
                                                         items={m.items}
                                                         mId={m.id}
